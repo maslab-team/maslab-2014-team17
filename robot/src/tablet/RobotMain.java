@@ -1,4 +1,4 @@
-package robot;
+package tablet;
 
 public class RobotMain {
 
