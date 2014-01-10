@@ -21,7 +21,7 @@ public class RobotComm {
 	
 	RobotComm() {
 		try {
-			serialPort = new SerialPort("COM4");
+			serialPort = new SerialPort("PORT");
             serialPort.openPort();
             serialPort.setParams(115200, 8, 1, 0);
         }
