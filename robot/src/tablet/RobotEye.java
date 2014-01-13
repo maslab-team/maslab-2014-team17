@@ -1,5 +1,16 @@
 package tablet;
 
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -61,15 +72,7 @@ public class RobotEye {
 	 * Detects walls.
 	 */
 	void detectWalls() {
-		Mat rawImage = new Mat();
-		
-		while (!camera.read(rawImage)) {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		Mat rawImage = this.look();
 
 		//TODO:Process the image using Hough line algorithm
 		//Mat processedImage = WallImageProcessor.process(rawImage);
@@ -80,19 +83,78 @@ public class RobotEye {
 	 * Detect balls.
 	 */
 	void detectBalls() {
-		Mat rawImage = new Mat();
-		
-		while (!camera.read(rawImage)) {
-			try {
-				Thread.sleep(1);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		Mat rawImage = this.look();
 
 		//TODO:Process the image using Hough circle algorithm
 		//Mat processedImage = WallImageProcessor.process(rawImage);
 		
+	}
+	
+	/**
+	 * Capture image.
+	 */
+	Mat look() {
+       Mat rawImage = new Mat();
+        
+        while (!camera.read(rawImage)) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+	        
+	    return rawImage;
+	}
+	
+	/*
+	 * Canny line transform.
+	 */
+	Mat Canny(Mat image) {
+	    Mat image_gray = new Mat();
+	    Imgproc.cvtColor(image, image_gray, Imgproc.COLOR_BGR2GRAY);
+	    return image_gray;
+	}
+	
+	void view(Mat image) {
+//	    Mat image_tmp = image;
+//        MatOfByte matOfByte = new MatOfByte();
+//
+//        Highgui.imencode(".jpg", image_tmp, matOfByte); 
+//
+//        byte[] byteArray = matOfByte.toArray();
+//        BufferedImage bufImage = null;
+//
+//        try {
+//            InputStream in = new ByteArrayInputStream(byteArray);
+//            bufImage = ImageIO.read(in);
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+//        Graphics g = (Graphics2D) bufImage.getGraphics();
+//        g.drawImage(bufImage , 0, 0, null);
+	    
+	    Imgproc.resize(image, image, new Size(640, 480));
+	    MatOfByte matOfByte = new MatOfByte();
+	    Highgui.imencode(".jpg", image, matOfByte);
+	    byte[] byteArray = matOfByte.toArray();
+	    BufferedImage bufImage = null;
+	    try {
+	        InputStream in = new ByteArrayInputStream(byteArray);
+	        bufImage = ImageIO.read(in);
+	        JFrame frame = new JFrame();
+	        frame.getContentPane().add(new JLabel(new ImageIcon(bufImage)));
+	        frame.pack();
+	        frame.setVisible(true);
+	        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    }
+	}
+	
+	public static void main(String[] args) {
+	    RobotEye eye = new RobotEye(0);
+	    eye.view(eye.Canny(eye.look()));
 	}
 
 }
