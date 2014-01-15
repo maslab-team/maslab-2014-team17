@@ -21,7 +21,7 @@ public class RobotComm {
 	
 	RobotComm() {
 		try {
-			serialPort = new SerialPort("PORT");
+			serialPort = new SerialPort("/dev/tty.usbmodemfd1211");
             serialPort.openPort();
             serialPort.setParams(115200, 8, 1, 0);
         }
