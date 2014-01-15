@@ -299,6 +299,8 @@ public class RobotEye {
 	 * @param image The image to display.
 	 */
 	void view(Mat image) {
+		if(frame != null) frame.dispose();
+		
 	    Imgproc.resize(image, image, new Size(640, 480));
 	    MatOfByte matOfByte = new MatOfByte();
 	    Highgui.imencode(".jpg", image, matOfByte);
@@ -327,14 +329,12 @@ public class RobotEye {
 	
 	/**
 	 * Processes the next available image and returns
-	 * lines, red circles, and green circles in the input
-	 * lists.
+	 * an instance of RobotEye.Data with the detected lines,
+	 * red circles, and green circles.
 	 * 
-	 * @param lines
-	 * @param redCircles
-	 * @param greenCircles
 	 */
-	void process(List<List<Integer>> lines, List<List<Float>> redCircles, List<List<Float>> greenCircles) {
+	Data process() {
+		Data data = new Data();
 	    Mat tmpImage = new Mat();
 	    Mat redTmpImage = new Mat();
 	    Mat greenTmpImage = new Mat();
@@ -349,9 +349,9 @@ public class RobotEye {
 	    		new Scalar(GREEN_BALL_HUE+GREEN_BALL_HUE_TOLERANCE, 255, 250));
 	    Mat greenBlurredGrayImage = this.blur(greenTmpImage);
 	    Mat cannyImage = this.Canny(sourceImage);
-	    lines.addAll(this.detectWalls(cannyImage));
-	    redCircles.addAll(this.detectBalls(redBlurredGrayImage));
-	    greenCircles.addAll(this.detectBalls(greenBlurredGrayImage));
+	    data.addLines(this.detectWalls(cannyImage));
+	    data.addRedCircles(this.detectBalls(redBlurredGrayImage));
+	    data.addGreenCircles(this.detectBalls(greenBlurredGrayImage));
 	    
 	    if(DISPLAY) {
 	    	Mat canvasImage = new Mat();
@@ -364,6 +364,40 @@ public class RobotEye {
 	    	processedImage = this.detectBallsForDisplay(greenBlurredGrayImage, displayTmpImage);
 	    	view(processedImage);
 	    }
+	    
+	    return data;
+	}
+	
+	public static class Data {
+		List<List<Integer>> lines;
+		List<List<Float>> redCircles;
+		List<List<Float>> greenCircles;
+		
+		Data() {
+			lines = new ArrayList<List<Integer>>();
+			redCircles = new ArrayList<List<Float>>();
+			greenCircles = new ArrayList<List<Float>>();
+		}
+		
+		void addLines(List<List<Integer>> detectedLines) {
+			if(detectedLines != null) this.lines.addAll(detectedLines);
+		}
+		void addRedCircles(List<List<Float>> detectedRedCircles) {
+			if(detectedRedCircles != null) this.redCircles.addAll(detectedRedCircles);
+		}
+		void addGreenCircles(List<List<Float>> detectedGreenCircles) {
+			if(detectedGreenCircles != null) this.greenCircles.addAll(detectedGreenCircles);
+		}
+		
+		public List<List<Integer>> getLines() {
+			return new ArrayList<List<Integer>>(lines);
+		}
+		public List<List<Float>> getRedCircles() {
+			return new ArrayList<List<Float>>(redCircles);
+		}
+		public List<List<Float>> getGreenCircles() {
+			return new ArrayList<List<Float>>(greenCircles);
+		}
 	}
 	
 	/*

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import tablet.RobotEye;
+
 /**
  * Keeps track of the objects in the world.
  * @author vmayar
@@ -19,20 +21,62 @@ public class RobotWorld {
 	//TODO: reactors, energy silo.
 	
 	/**
+	 * Create a new instance of robot world, initially empty.
+	 */
+	public RobotWorld() {
+		balls = new ArrayList<Ball>();
+		walls = new ArrayList<Wall>();
+	}
+	
+	/**
 	 * Create a new instance of robot world from detected lines
 	 * and circles.  Uses the circles to form balls and walls.
 	 * 
 	 * @param lines
 	 * @param circles
 	 */
-	@SuppressWarnings("unchecked")
 	public RobotWorld(List<List<Integer>> lines, List<List<Float>> redCircles,
 			List<List<Float>> greenCircles) {
-		balls = new ArrayList<Ball>();
+		this();
+		this.update(lines, redCircles, greenCircles);
+	}
+	
+	/**
+	 * Updates the world given the lines and circles seen by the eye.
+	 * 
+	 * @param lines
+	 * @param redCircles
+	 * @param greenCircles
+	 */
+	@SuppressWarnings("unchecked")
+	public void update(List<List<Integer>> lines, List<List<Float>> redCircles,
+			List<List<Float>> greenCircles) {
+		balls.clear();
 		for(List<Float> ball : redCircles) {
 			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
 		}
 		for(List<Float> ball : greenCircles) {
+			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
+		}
+		Collections.sort(balls);
+		//TODO: create walls.
+	}
+	
+	/**
+	 * Updates the world given the lines and circles seen by the eye
+	 * as an instance of RobotEye.Data.
+	 * 
+	 * @param lines
+	 * @param redCircles
+	 * @param greenCircles
+	 */
+	@SuppressWarnings("unchecked")
+	public void update(RobotEye.Data data) {
+		balls.clear();
+		for(List<Float> ball : data.getRedCircles()) {
+			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
+		}
+		for(List<Float> ball : data.getGreenCircles()) {
 			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
 		}
 		Collections.sort(balls);
