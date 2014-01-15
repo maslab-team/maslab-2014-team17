@@ -11,4 +11,5 @@
 "Reactor Height" = 14in
 "Elevator Height" = 11.5in
 "Elevator Width" = "Ball Diameter" + 0.25in
-"Elevator Axle Length" = "Elevator Width" + 4*"Sheet Thickness"
+"Elevator Bearing Diameter" = sqr(2*("Sheet Thickness"^2)) + 0.2in
+"Elevator Axle Length" = "Elevator Width" + 6*"Sheet Thickness"
