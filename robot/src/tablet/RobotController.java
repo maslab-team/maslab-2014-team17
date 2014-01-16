@@ -1,59 +1,11 @@
 package tablet;
 
-<<<<<<< HEAD
 import comm.*;
 import devices.sensors.Gyroscope;
 import jssc.SerialPort;
 import jssc.SerialPortException;
-
-public class RobotController {
-    
-    public static void main(String[] args) throws SerialPortException {
-        
-        MapleComm comm = new MapleComm(MapleIO.SerialPortType.LINUX);
-        comm.registerDevice(new Gyroscope(11, 10));
-        comm.initialize();
-        comm.transmit();
-        comm.updateSensorData();
-//        SerialPort serialPort;
-//        try {
-//            serialPort = new SerialPort("/dev/tty.usbmodemfa131");
-//            serialPort.openPort();
-//            serialPort.setParams(115200, 8, 1, 0);
-//            
-//            byte[] bytes;
-//            
-//            byte[] packet = buildPacket((byte) 'I', new byte[] {(byte) 'G'}, (byte) 0xff);
-//            serialPort.writeBytes(packet);
-//            while(true) {
-//                bytes = serialPort.readBytes();
-//                if(bytes != null) {
-//                    for(byte elt : bytes) {
-//                        System.out.print(elt + " ");
-//                    }
-//                    System.out.print('\n');
-//                }
-//            }
-//        }
-//        catch (SerialPortException ex){
-//            System.out.println(ex);
-//        }
-    }
-    
-//    private static byte[] buildPacket(byte first, byte[] message, byte last) {
-//        int len = message.length;
-//        byte[] packet = new byte[len + 2];
-//        packet[0] = first;
-//        System.arraycopy(message, 0, packet, 1, len);
-//        packet[len + 1] = last;
-//        return packet;
-//    }
-
-=======
-import comm.MapleComm;
 import devices.actuators.Cytron;
 import devices.sensors.Encoder;
-import devices.sensors.Gyroscope;
 
 public class RobotController {
 	
@@ -76,7 +28,7 @@ public class RobotController {
 	private Gyroscope gyroscope;
 	
 	RobotController(String port) {
-		this.comm = new MapleComm(port);
+		this.comm = new MapleComm(MapleIO.SerialPortType.LINUX);
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
 		this.gyroscope = new Gyroscope(GYROSCOPE_SPI_PORT, GYROSCOPE_SS_PIN);
@@ -124,6 +76,4 @@ public class RobotController {
 	void sendControl() {
 		comm.transmit();
 	}
-	
->>>>>>> 1fdf37ab088dc4ebacefe2de83217b2ac7ec2c2b
 }
