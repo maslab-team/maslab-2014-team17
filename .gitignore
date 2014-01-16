@@ -1,0 +1,2 @@
+# Ignore temporary DXF files generated for lasercutting the robot parts.
+Mechanical/Test Lasercuts/*

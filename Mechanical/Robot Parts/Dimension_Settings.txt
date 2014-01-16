@@ -1,7 +1,7 @@
 ﻿"Ball Diameter"= 1.75in
 "Sheet Thickness"= 0.25in
 "Screw Diameter"= .17in
-"Robot Diameter"= 16in
+"Robot Diameter"= 14in
 "Castor Screw Diameter"= 0.22in
 "Wheel Diameter" = 4in
 "Nut Diameter" = 8.4mm
@@ -11,4 +11,7 @@
 "Reactor Height" = 14in
 "Elevator Height" = 11.5in
 "Elevator Width" = "Ball Diameter" + 0.25in
-"Elevator Axle Length" = "Elevator Width" + 4*"Sheet Thickness"
+"Elevator Bearing Diameter" = sqr(2*("Sheet Thickness"^2)) + 0.2in
+"Elevator Axle Endcap Diameter" = "Pulley Diameter" + 0.25in
+"Elevator Axle Length" = "Elevator Width" + 8*"Sheet Thickness"
+"Elevator Clearance from Axis" = ("Pulley Diameter"/2) + "Ball Diameter" + 0.5in

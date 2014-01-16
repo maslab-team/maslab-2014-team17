@@ -1,10 +1,25 @@
 package tablet;
 
-public class RobotMain {
+import comm.MapleComm;
 
+import model.RobotWorld;
+
+public class RobotMain {
+	
+	private static final String maplePort = "/dev/tty.usbmodemfd121";
+	private static final int cameraNum = 0;
+	
 	public static void main(String[] args) {
-		RobotComm comm = new RobotComm();
-		System.out.println("Hello world");
+		long startTime = System.currentTimeMillis();
+		
+		RobotController controller = new RobotController(maplePort);
+		RobotEye eye = new RobotEye(cameraNum);
+		RobotWorld world = new RobotWorld();
+		RobotBrain brain = new RobotBrain(eye, controller, world, startTime);
+		
+		while(true) {
+			brain.loop();
+		}
 	}
 
 }
