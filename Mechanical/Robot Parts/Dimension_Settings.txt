@@ -12,5 +12,6 @@
 "Elevator Height" = 11.5in
 "Elevator Width" = "Ball Diameter" + 0.25in
 "Elevator Bearing Diameter" = sqr(2*("Sheet Thickness"^2)) + 0.2in
-"Elevator Axle Endcap Diameter" = "Elevator Bearing Diameter" + 0.25in
-"Elevator Axle Length" = "Elevator Width" + 6*"Sheet Thickness"
+"Elevator Axle Endcap Diameter" = "Pulley Diameter" + 0.25in
+"Elevator Axle Length" = "Elevator Width" + 8*"Sheet Thickness"
+"Elevator Clearance from Axis" = ("Pulley Diameter"/2) + "Ball Diameter" + 0.5in
