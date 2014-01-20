@@ -1,4 +1,5 @@
 ﻿"Ball Diameter"= 1.75in
+"Ball Radius" = "Ball Diameter"/2
 "Sheet Thickness"= 0.25in
 "Screw Diameter"= .17in
 "Robot Diameter"= 14in
@@ -14,4 +15,9 @@
 "Elevator Bearing Diameter" = sqr(2*("Sheet Thickness"^2)) + 0.2in
 "Elevator Axle Endcap Diameter" = "Pulley Diameter" + 0.25in
 "Elevator Axle Length" = "Elevator Width" + 8*"Sheet Thickness"
-"Elevator Clearance from Axis" = ("Pulley Diameter"/2) + "Ball Diameter" + 0.5in
+"Elevator Clearance from Axis" = 3.28in
+"Elevator Horizontal Clearance" = "Elevator Width" + 0.5in
+"Claw Horizontal Seperation" = ("Elevator Width"/2) - (1.5 * "Sheet Thickness") - 0.15in
+"Claw Radius" = "Ball Radius" + 0.1in
+"Castor Wheel Height" = 1.25in
+
