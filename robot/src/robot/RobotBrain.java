@@ -1,10 +1,7 @@
-package tablet;
-
-import java.awt.Point;
-import java.util.ArrayList;
-import java.util.List;
+package robot;
 
 import model.RobotWorld;
+import robot.datautils.MotionData;
 
 /**
  * Contains method necessary for processing inputs
@@ -33,14 +30,19 @@ public class RobotBrain {
 	/** Indicates whether there is new data from the eye. */
 	private volatile boolean newEyeData = false;
 	
-	/** Represents relative position target in xy-plane. */
-	private Point positionTarget;
+	/*/** Represents position target in xy-plane.
+	private Point positionTarget;*/
 	
 	/**
-	 * Represents relative angular position target in radians.
+	 * Represents angular position target in radians.
 	 * Counterclockwise direction is positive.
 	 */
 	private double angleTarget;
+	
+	/**
+	 * Distance to target.
+	 */
+	private double distanceTarget;
 	
 	/**
 	 * Start time of the game, in millis since epoch.
@@ -51,6 +53,8 @@ public class RobotBrain {
 	 * Time elapsed since game start.
 	 */
 	private long elapsedTime;
+	
+	private long timeMarker;
 
 	/**
 	 * Iterations since game start.
@@ -73,10 +77,14 @@ public class RobotBrain {
 	public RobotBrain(RobotEye eye, RobotController controller, RobotWorld world, long startTime) {
 		this.eye = eye;
 		this.controller = controller;
+		this.controller.setCurrentAngle(world.getMap().startPose.theta);
+		//this.controller.setCurrentPosition(world.getMap().startPose.x, world.getMap().startPose.y);
 		this.world = world;
-		this.positionTarget = new Point(0, 0);
-		this.angleTarget = 0;
+		//this.positionTarget = new Point(world.getMap().startPose.x, world.getMap().startPose.y);
+		this.angleTarget = world.getMap().startPose.theta;
+		this.distanceTarget = 0;
 		this.startTime = startTime;
+		this.timeMarker = 0;
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
 		this.startLooking();
@@ -116,18 +124,25 @@ public class RobotBrain {
 		this.elapsedTime = System.currentTimeMillis() - startTime;
 		++counter;
 		updateWorld();
+		MotionData mData = controller.getMotionData();
 		
 		if(elapsedTime < 1000 * 60 * 1) {
 			
-			RobotWorld.Ball largestBall = world.getLargestBall();
-			if(largestBall != null) {
-				angleTarget = pixelToAngle(largestBall.getX());
+			/** Update every 5 seconds. */
+			if(elapsedTime - timeMarker > 5000) {
+
+				RobotWorld.Ball largestBall = world.getLargestBall();
+				if(largestBall != null) {
+					angleTarget = pixelToAngle(largestBall.getX());
+					//TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
+				}
+				controller.setTarget(angleTarget, distanceTarget);
+				timeMarker = elapsedTime;
 			}
-			//TODO: set angle: angleTarget.
 			
-		} else if (elapsedTime < 1000 * 60 * 3) {
+		} /*else if (elapsedTime < 1000 * 60 * 3) {
 			//TODO: Figure out what to do
-		}
+		}*/
 		else {
 			stopLooking();
 			System.out.println("Game over.");
@@ -154,8 +169,8 @@ public class RobotBrain {
 		System.out.printf("ROBOT INFO\n");
 		System.out.printf("\tTime: %d\n", elapsedTime);
 		System.out.printf("\tCounter: %d\n", counter);
-		System.out.printf("\tPosition Target: " + positionTarget + "\n");
+		//System.out.printf("\tPosition Target: " + positionTarget + "\n");
+		System.out.printf("\tDistance Target: %.2f\n", distanceTarget);
 		System.out.printf("\tAngle Target: %.2f\n", angleTarget);
 	}
-
 }

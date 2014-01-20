@@ -1,12 +1,10 @@
-package tablet;
-
-import comm.MapleComm;
+package robot;
 
 import model.RobotWorld;
 
 public class RobotMain {
 	
-	private static final String maplePort = "/dev/tty.usbmodemfd121";
+	private static final String maplePort = "/dev/tty.usbmodemfa131";
 	private static final int cameraNum = 0;
 	
 	public static void main(String[] args) {

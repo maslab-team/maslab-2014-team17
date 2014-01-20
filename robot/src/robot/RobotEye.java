@@ -1,4 +1,4 @@
-package tablet;
+package robot;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -130,7 +130,7 @@ public class RobotEye {
 		
 		numCols = lines.cols();
 		int[] data = new int[DATA_LENGTH];
-		System.out.printf("Identified %d lines.\n", numCols);
+		//System.out.printf("Identified %d lines.\n", numCols);
 		
 		for(int lineIdx = 0; lineIdx < numCols; ++lineIdx) {
 			lines.get(0, lineIdx, data);
@@ -162,7 +162,7 @@ public class RobotEye {
 				HOUGH_CIRCLE_DETECTION_THRESH, HOUGH_MIN_RADIUS, HOUGH_MAX_RADIUS);
 		
 		numCols = circles.cols();
-		System.out.printf("Identified %d circles.\n", numCols);
+		//System.out.printf("Identified %d circles.\n", numCols);
 		// Use only the *best* guesses for circles, which are first in the returned Mat.
 		if(numCols > HOUGH_MAX_NUM_CIRCLES) numCols = HOUGH_MAX_NUM_CIRCLES;
 		float[] data = new float[DATA_LENGTH];
