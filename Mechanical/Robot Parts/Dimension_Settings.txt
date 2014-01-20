@@ -19,3 +19,5 @@
 "Elevator Horizontal Clearance" = "Elevator Width" + 0.5in
 "Claw Horizontal Seperation" = ("Elevator Width"/2) - (1.5 * "Sheet Thickness") - 0.15in
 "Claw Radius" = "Ball Radius" + 0.1in
+"Castor Wheel Height" = 1.25in
+
