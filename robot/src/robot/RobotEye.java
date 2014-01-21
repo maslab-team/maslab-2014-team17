@@ -1,11 +1,13 @@
-package tablet;
+package robot;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -53,18 +55,18 @@ public class RobotEye {
 
 	/** Hough circle constants. */
 	private static final double HOUGH_INVERSE_ACCUMULATOR_RES = 1;
-	private static final double HOUGH_MIN_CENTER_DIST = 100;
-	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 15;
+	private static final double HOUGH_MIN_CENTER_DIST = 80;
+	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 12;
 	private static final int HOUGH_MIN_RADIUS = 10;
-	private static final int HOUGH_MAX_RADIUS = 100;
+	private static final int HOUGH_MAX_RADIUS = 150;
 	private static final int HOUGH_MAX_NUM_CIRCLES = 6;
 	
 	/** Canny constants. */
-	private static final double CANNY_LOW_THRESH = 80.0;
-	private static final double CANNY_HIGH_THRESH = 160.0;
+	private static final double CANNY_LOW_THRESH = 150.0;
+	private static final double CANNY_HIGH_THRESH = 300.0;
 	
 	/** Gaussian blur constants. */
-	private static final int BLUR_KERNEL_SIZE = 7;
+	private static final int BLUR_KERNEL_SIZE = 13;
 	
 	/** Display constants. */
 	private static final int DISPLAY_THICKNESS = 3;
@@ -72,21 +74,28 @@ public class RobotEye {
 	private static final boolean DISPLAY = true;
 	
 	/** Color constants. */
-	private static final int RED_BALL_HUE = 132;
-	private static final int RED_BALL_HUE_TOLERANCE = 12;
-	private static final int GREEN_BALL_HUE = 120;
-	private static final int GREEN_BALL_HUE_TOLERANCE = 0;
+	private static final int RED_BALL_HUE = 240;
+	private static final int RED_BALL_HUE_TOLERANCE = 10;
+	private static final int GREEN_BALL_HUE = 118;
+	private static final int GREEN_BALL_HUE_TOLERANCE = 10;
+	private static final int GREEN_BALL_SATURATION_LOW = 1;
+	private static final int GREEN_BALL_SATURATION_HIGH = 250;
+	private static final int GREEN_BALL_VALUE_LOW = 1;
+	private static final int GREEN_BALL_VALUE_HIGH = 230;
+	private static final int RED_BALL_SATURATION_LOW = 0;
+	private static final int RED_BALL_SATURATION_HIGH = 255;
+	private static final int RED_BALL_VALUE_LOW = 0;
+	private static final int RED_BALL_VALUE_HIGH = 255;
 	
 	/** Image source constants. */
-	static final int IMAGE_HEIGHT = 720; // 1080 for webcam, 720 for macbook
-	static final int IMAGE_WIDTH = 1280; // 1920 for webcam, 1280 for macbook
-	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 80.0 * Math.PI / 180.0;
+	static final int IMAGE_HEIGHT = 1080; // 1080 for webcam, 720 for macbook
+	static final int IMAGE_WIDTH = 1920; // 1920 for webcam, 1280 for macbook
+	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 120.0 * Math.PI / 180.0;
 	static final double IMAGE_DEPTH_IN_PIXELS =
 			IMAGE_WIDTH/(2.0*Math.tan(IMAGE_HORIZONTAL_ANGLE_OF_VIEW/2.0));
 	
 	VideoCapture camera;
-	JFrame frame = null; // Frame used for display.
-	InputStream in = null; // Input for display.
+	Map<String, JFrame> frames; // Frames used for display.
 	
 	/**
 	 * Given the camera number, sets up the camera for this
@@ -101,6 +110,10 @@ public class RobotEye {
 		// Setup the camera
 		camera = new VideoCapture();
 		camera.open(n);
+		
+		if(DISPLAY) {
+			setUpDisplay();
+		}
 	}
 	
 	/**
@@ -130,7 +143,7 @@ public class RobotEye {
 		
 		numCols = lines.cols();
 		int[] data = new int[DATA_LENGTH];
-		System.out.printf("Identified %d lines.\n", numCols);
+		//System.out.printf("Identified %d lines.\n", numCols);
 		
 		for(int lineIdx = 0; lineIdx < numCols; ++lineIdx) {
 			lines.get(0, lineIdx, data);
@@ -162,7 +175,7 @@ public class RobotEye {
 				HOUGH_CIRCLE_DETECTION_THRESH, HOUGH_MIN_RADIUS, HOUGH_MAX_RADIUS);
 		
 		numCols = circles.cols();
-		System.out.printf("Identified %d circles.\n", numCols);
+		//System.out.printf("Identified %d circles.\n", numCols);
 		// Use only the *best* guesses for circles, which are first in the returned Mat.
 		if(numCols > HOUGH_MAX_NUM_CIRCLES) numCols = HOUGH_MAX_NUM_CIRCLES;
 		float[] data = new float[DATA_LENGTH];
@@ -212,7 +225,7 @@ public class RobotEye {
 	 * @param canvasImage
 	 * @return
 	 */
-	Mat detectBallsForDisplay(Mat blurredGrayImage, Mat canvasImage) {
+	Mat detectBallsForDisplay(Mat blurredGrayImage, Mat canvasImage, Scalar color) {
 		Mat processedImage = new Mat();
 		canvasImage.copyTo(processedImage);
 		List<List<Float>> ballData = detectBalls(blurredGrayImage);
@@ -221,7 +234,7 @@ public class RobotEye {
 		for(int circleIdx = 0; circleIdx < numCircles; ++circleIdx) {
 			List<Float> circleData = ballData.get(circleIdx);
 			Core.circle(processedImage, new Point(circleData.get(0), circleData.get(1)),
-					(int)((float)circleData.get(2)), new Scalar(0, 255, 0), DISPLAY_THICKNESS);
+					(int)((float)circleData.get(2)), color, DISPLAY_THICKNESS);
 		}
 		
 		return processedImage;
@@ -292,16 +305,33 @@ public class RobotEye {
 		Core.inRange(image, lower, upper, processedImage);
 		return processedImage;
 	}
+
+	private void setUpDisplay() {
+		frames = new HashMap<String, JFrame>();
+		frames.put("processed", getDefaultFrame(0, 0));
+		frames.put("red", getDefaultFrame(480, 0));
+		frames.put("green", getDefaultFrame(0, 360));
+	}
+	
+	private JFrame getDefaultFrame(int xLoc, int yLoc) {
+		JFrame frame = new JFrame();
+		frame.setLocation(xLoc, yLoc);
+        frame.setVisible(true);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        return frame;
+	}
 	
 	/**
 	 * Displays an image in a GUI.
 	 * 
 	 * @param image The image to display.
 	 */
-	void view(Mat image) {
-		if(frame != null) frame.dispose();
+	void view(Mat image, String frameString) {
+		JFrame frame = frames.get(frameString);
+		if(frame == null) {	return;	}
 		
-	    Imgproc.resize(image, image, new Size(640, 480));
+		ByteArrayInputStream in = null;
+	    Imgproc.resize(image, image, new Size(480, 360));
 	    MatOfByte matOfByte = new MatOfByte();
 	    Highgui.imencode(".jpg", image, matOfByte);
 	    byte[] byteArray = matOfByte.toArray();
@@ -309,11 +339,9 @@ public class RobotEye {
 	    try {
 	        in = new ByteArrayInputStream(byteArray);
 	        bufImage = ImageIO.read(in);
-	        frame = new JFrame();
+	        frame.getContentPane().removeAll();
 	        frame.getContentPane().add(new JLabel(new ImageIcon(bufImage)));
 	        frame.pack();
-	        frame.setVisible(true);
-	        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	    } catch (IOException e) {
 	        e.printStackTrace();
 	    } finally {
@@ -340,16 +368,16 @@ public class RobotEye {
 	    Mat greenTmpImage = new Mat();
 	    Mat sourceImage = this.look();
 	    Imgproc.cvtColor(sourceImage, tmpImage, Imgproc.COLOR_BGR2HSV_FULL);
-	    int rotation = 128 - 255;
-	    Core.add(tmpImage,  new Scalar(rotation), redTmpImage);
-	    redTmpImage = this.inRange(redTmpImage, new Scalar(RED_BALL_HUE-RED_BALL_HUE_TOLERANCE, 0, 0),
-	    		new Scalar(RED_BALL_HUE+RED_BALL_HUE_TOLERANCE, 255, 250));
+	    redTmpImage = this.inRange(tmpImage, new Scalar(RED_BALL_HUE-RED_BALL_HUE_TOLERANCE,
+	    		RED_BALL_SATURATION_LOW, RED_BALL_VALUE_LOW),
+	    		new Scalar(RED_BALL_HUE+RED_BALL_HUE_TOLERANCE,
+	    		RED_BALL_SATURATION_HIGH, RED_BALL_VALUE_HIGH));
 	    Mat redBlurredGrayImage = this.blur(redTmpImage);
-	    greenTmpImage = this.inRange(tmpImage, new Scalar(GREEN_BALL_HUE-GREEN_BALL_HUE_TOLERANCE, 0, 0),
-	    		new Scalar(GREEN_BALL_HUE+GREEN_BALL_HUE_TOLERANCE, 255, 250));
+	    greenTmpImage = this.inRange(tmpImage, new Scalar(GREEN_BALL_HUE-GREEN_BALL_HUE_TOLERANCE,
+	    		GREEN_BALL_SATURATION_LOW, GREEN_BALL_VALUE_LOW),
+	    		new Scalar(GREEN_BALL_HUE+GREEN_BALL_HUE_TOLERANCE,
+	    		GREEN_BALL_SATURATION_HIGH, GREEN_BALL_VALUE_HIGH));
 	    Mat greenBlurredGrayImage = this.blur(greenTmpImage);
-	    Mat cannyImage = this.Canny(sourceImage);
-	    data.addLines(this.detectWalls(cannyImage));
 	    data.addRedCircles(this.detectBalls(redBlurredGrayImage));
 	    data.addGreenCircles(this.detectBalls(greenBlurredGrayImage));
 	    
@@ -357,31 +385,33 @@ public class RobotEye {
 	    	Mat canvasImage = new Mat();
 	    	Mat displayTmpImage = new Mat();
 	    	Mat processedImage = new Mat();
-	    	cannyImage.copyTo(canvasImage);
-	    	Imgproc.cvtColor(canvasImage, canvasImage, Imgproc.COLOR_GRAY2BGR);
-	    	displayTmpImage = this.detectWallsForDisplay(cannyImage, canvasImage);
-	    	displayTmpImage = this.detectBallsForDisplay(redBlurredGrayImage, displayTmpImage);
-	    	processedImage = this.detectBallsForDisplay(greenBlurredGrayImage, displayTmpImage);
-	    	view(processedImage);
+	    	sourceImage.copyTo(canvasImage);
+	    	displayTmpImage = this.detectBallsForDisplay(redBlurredGrayImage, canvasImage,
+	    			new Scalar(0, 0, 255));
+	    	processedImage = this.detectBallsForDisplay(greenBlurredGrayImage, displayTmpImage,
+	    			new Scalar(0, 255, 0));
+	    	view(processedImage, "processed");
+	    	view(redBlurredGrayImage, "red");
+	    	view(greenBlurredGrayImage, "green");
 	    }
 	    
 	    return data;
 	}
 	
 	public static class Data {
-		List<List<Integer>> lines;
+		//List<List<Integer>> lines;
 		List<List<Float>> redCircles;
 		List<List<Float>> greenCircles;
 		
 		Data() {
-			lines = new ArrayList<List<Integer>>();
+			//lines = new ArrayList<List<Integer>>();
 			redCircles = new ArrayList<List<Float>>();
 			greenCircles = new ArrayList<List<Float>>();
 		}
 		
-		void addLines(List<List<Integer>> detectedLines) {
+		/*void addLines(List<List<Integer>> detectedLines) {
 			if(detectedLines != null) this.lines.addAll(detectedLines);
-		}
+		}*/
 		void addRedCircles(List<List<Float>> detectedRedCircles) {
 			if(detectedRedCircles != null) this.redCircles.addAll(detectedRedCircles);
 		}
@@ -389,9 +419,9 @@ public class RobotEye {
 			if(detectedGreenCircles != null) this.greenCircles.addAll(detectedGreenCircles);
 		}
 		
-		public List<List<Integer>> getLines() {
+		/*public List<List<Integer>> getLines() {
 			return new ArrayList<List<Integer>>(lines);
-		}
+		}*/
 		public List<List<Float>> getRedCircles() {
 			return new ArrayList<List<Float>>(redCircles);
 		}

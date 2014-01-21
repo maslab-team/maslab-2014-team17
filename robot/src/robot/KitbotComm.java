@@ -1,4 +1,4 @@
-package tablet;
+package robot;
 
 import jssc.SerialPort;
 
