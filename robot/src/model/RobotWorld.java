@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import tablet.RobotEye;
+import comm.BotClientMap;
+import robot.RobotEye;
 
 /**
  * Keeps track of the objects in the world.
@@ -13,19 +14,28 @@ import tablet.RobotEye;
  */
 public class RobotWorld {
 	
-	/** List of walls. */
-	private List<Wall> walls;
+	private BotClientMap map;
 	
-	/** List of balls sorted by radius, which represents proximity to the robot. */
-	private List<Ball> balls;
+	/** Lists of balls sorted by radius, which represents proximity to the robot. */
+	private List<Ball> greenBalls, redBalls;
 	//TODO: reactors, energy silo.
 	
 	/**
 	 * Create a new instance of robot world, initially empty.
 	 */
 	public RobotWorld() {
-		balls = new ArrayList<Ball>();
-		walls = new ArrayList<Wall>();
+		greenBalls = new ArrayList<Ball>();
+		redBalls = new ArrayList<Ball>();
+		map = BotClientMap.getDefaultMap();
+	}
+	
+	/**
+	 * Return the underlying map of the world.
+	 * 
+	 * @return
+	 */
+	public BotClientMap getMap() {
+		return map;
 	}
 	
 	/**
@@ -51,14 +61,16 @@ public class RobotWorld {
 	@SuppressWarnings("unchecked")
 	public void update(List<List<Integer>> lines, List<List<Float>> redCircles,
 			List<List<Float>> greenCircles) {
-		balls.clear();
+		redBalls.clear();
+		greenBalls.clear();
 		for(List<Float> ball : redCircles) {
-			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
+			redBalls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
 		}
 		for(List<Float> ball : greenCircles) {
-			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
+			greenBalls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
 		}
-		Collections.sort(balls);
+		Collections.sort(redBalls);
+		Collections.sort(greenBalls);
 		//TODO: create walls.
 	}
 	
@@ -72,49 +84,42 @@ public class RobotWorld {
 	 */
 	@SuppressWarnings("unchecked")
 	public void update(RobotEye.Data data) {
-		balls.clear();
+		redBalls.clear();
+		greenBalls.clear();
 		for(List<Float> ball : data.getRedCircles()) {
-			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
+			redBalls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "red"));
 		}
 		for(List<Float> ball : data.getGreenCircles()) {
-			balls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
+			greenBalls.add(new Ball(ball.get(0), ball.get(1), ball.get(2), "green"));
 		}
-		Collections.sort(balls);
+		Collections.sort(redBalls);
+		Collections.sort(greenBalls);
 		//TODO: create walls.
 	}
 	
 	public List<Ball> getBalls() {
-		return new ArrayList<Ball>(balls);
+		List<Ball> ret = new ArrayList<Ball>(redBalls);
+		ret.addAll(greenBalls);
+		return ret;
 	}
 	
-	public Ball getLargestBall() {
-		if(!balls.isEmpty()) return balls.get(0);
+	public Ball getLargestRedBall() {
+		if(!redBalls.isEmpty()) return redBalls.get(0);		
+		return null;
+	}
+	
+	public Ball getLargestGreenBall() {
+		if(!greenBalls.isEmpty()) return greenBalls.get(0);		
 		return null;
 	}
 	
 	public List<Ball> getRedBalls() {
-		List<Ball> redBalls = new ArrayList<Ball>();
-		for(Ball ball : balls) {
-			if(ball.getColor() == Ball.Color.RED) redBalls.add(ball);
-		}
-		return redBalls;
+		return new ArrayList<Ball>(redBalls);
 	}
 	
 	public List<Ball> getGreenBalls() {
-		List<Ball> redBalls = new ArrayList<Ball>();
-		for(Ball ball : balls) {
-			if(ball.getColor() == Ball.Color.GREEN) redBalls.add(ball);
-		}
-		return redBalls;
-	}
-	
-	/**
-	 * Represents a wall in the robot's head.
-	 * @author vmayar
-	 *
-	 */
-	public static class Wall {
-		//TODO:implement
+		return new ArrayList<Ball>(greenBalls);
+
 	}
 	
 	/**

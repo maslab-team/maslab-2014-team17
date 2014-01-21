@@ -12,6 +12,9 @@ import robot.datautils.MotionData;
  */
 public class RobotBrain {
 	
+	private static final boolean DEBUG = false;
+	private static final int SLEEP_TIME_MILLIS = 5;
+	
 	private RobotEye eye;
 	private RobotController controller;
 	private RobotWorld world;
@@ -124,19 +127,19 @@ public class RobotBrain {
 		this.elapsedTime = System.currentTimeMillis() - startTime;
 		++counter;
 		updateWorld();
-		MotionData mData = controller.getMotionData();
+		//MotionData mData = controller.getMotionData();
 		
 		if(elapsedTime < 1000 * 60 * 1) {
 			
 			/** Update every 5 seconds. */
 			if(elapsedTime - timeMarker > 5000) {
 
-				RobotWorld.Ball largestBall = world.getLargestBall();
-				if(largestBall != null) {
-					angleTarget = pixelToAngle(largestBall.getX());
+				RobotWorld.Ball greenBall = world.getLargestGreenBall();
+				if(greenBall != null) {
+					angleTarget = pixelToAngle(greenBall.getX());
 					//TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
 				}
-				controller.setTarget(angleTarget, distanceTarget);
+				controller.setRelativeTarget(angleTarget, distanceTarget);
 				timeMarker = elapsedTime;
 			}
 			
@@ -150,6 +153,13 @@ public class RobotBrain {
 		
 		controller.sendControl();
 		debug();
+
+		try {
+			Thread.sleep(SLEEP_TIME_MILLIS);
+		} catch(InterruptedException ex) {
+			ex.printStackTrace();
+		}
+		
 	}
 	
 	/**
@@ -160,17 +170,19 @@ public class RobotBrain {
 	 * @return
 	 */
 	private double pixelToAngle(int pixelX) {
-		int distFromCenter = pixelX - RobotEye.IMAGE_WIDTH/2;
+		int distFromCenter = RobotEye.IMAGE_WIDTH/2 - pixelX;
 		return Math.atan2(distFromCenter, RobotEye.IMAGE_DEPTH_IN_PIXELS);
 		
 	}
 	
 	private void debug() {
-		System.out.printf("ROBOT INFO\n");
-		System.out.printf("\tTime: %d\n", elapsedTime);
-		System.out.printf("\tCounter: %d\n", counter);
-		//System.out.printf("\tPosition Target: " + positionTarget + "\n");
-		System.out.printf("\tDistance Target: %.2f\n", distanceTarget);
-		System.out.printf("\tAngle Target: %.2f\n", angleTarget);
+		if(DEBUG) {
+			System.out.printf("ROBOT INFO\n");
+			System.out.printf("\tTime:\t%d\n", elapsedTime);
+			System.out.printf("\tCounter:\t%d\n", counter);
+			//System.out.printf("\tPosition Target:\t" + positionTarget + "\n");
+			System.out.printf("\tDistance Target:\t%.2f\n", distanceTarget);
+			System.out.printf("\tAngle Target:\t%.2f\n", angleTarget);
+		}
 	}
 }

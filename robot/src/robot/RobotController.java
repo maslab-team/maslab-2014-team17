@@ -33,7 +33,10 @@ import devices.sensors.Gyroscope;
  */
 public class RobotController {
 	
-	private static final boolean DEBUG = true;
+	/** Set true to disable communication with the Maple. */
+	private static final boolean NO_COMM = true;
+	
+	private static final boolean DEBUG = false;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 8.0;
@@ -41,12 +44,15 @@ public class RobotController {
 	private static final double WHEEL_DIAMETER_IN_INCHES = 3.88;
 	private static final double WHEEL_RADIUS_IN_INCHES = WHEEL_DIAMETER_IN_INCHES / 2.0;
 	
+	/**
+	 * Pins and ports.
+	 */
 	private static final int LEFT_CYTRON_PWM_PIN = 1;
 	private static final int LEFT_CYTRON_DIR_PIN = 2;
 	private static final int RIGHT_CYTRON_PWM_PIN = 6;
 	private static final int RIGHT_CYTRON_DIR_PIN = 7;
 
-	private static final int GYROSCOPE_SPI_PORT = 1;
+	private static final int GYROSCOPE_SPI_PORT = 1; // pins 10-13
 	private static final int GYROSCOPE_SS_PIN = 9;
 	
 	private static final int LEFT_ENCODER_PIN_A = 36;
@@ -55,10 +61,10 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_B = 33;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.5;
+	private static final double P_ROT = 0.03;
 	private static final double I_ROT = 0;
 	private static final double D_ROT = 0;
-	private static final double P_TRANS = 0.5;
+	private static final double P_TRANS = 0.03;
 	private static final double I_TRANS = 0;
 	private static final double D_TRANS = 0;
 
@@ -91,7 +97,12 @@ public class RobotController {
 	// private double positionCurrent;
 	
 	RobotController(String port) {
-		this.comm = new MapleComm(port);
+		if(NO_COMM) {
+			this.comm = null;
+		} else {
+			this.comm = new MapleComm(port);
+			setUpComm();
+		}
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
 		this.gyroscope = new Gyroscope(GYROSCOPE_SPI_PORT, GYROSCOPE_SS_PIN);
@@ -104,7 +115,6 @@ public class RobotController {
 		updateError();
 		this.errorHistory = new BoundedQueue<Error>();
 		this.errorHistory.add(this.error);
-		setUpComm();
 	}
 	
 	/**
@@ -118,6 +128,13 @@ public class RobotController {
 	}
 	
 	private void updateError() {
+		double angleError = this.angleTarget - this.angleCurrent;
+		while (angleError > Math.PI) {
+			angleError -= 2*Math.PI;
+		}
+		while (angleError < -1.0 * Math.PI) {
+			angleError += 2*Math.PI;
+		}
 		this.error = new Error(this.angleTarget - this.angleCurrent, this.distanceTarget);
 	}
 	
@@ -142,6 +159,10 @@ public class RobotController {
 		updateError();
 		errorHistory.clear();
 		this.errorHistory.add(this.error);
+	}
+	
+	void setRelativeTarget(double relAngle, double distance) {
+		setTarget(this.angleCurrent + relAngle, distance);
 	}
 	
 	/**
@@ -169,7 +190,9 @@ public class RobotController {
 	 */
 	MotionData getMotionData() {
 		// Update data
-		comm.updateSensorData();
+		if(!NO_COMM) {
+			comm.updateSensorData();
+		}
 		
 		// Retrieve data
 		SensorData data = new SensorData();
@@ -189,9 +212,9 @@ public class RobotController {
 		
 		// Update error.
 		//double encoderAngularSpeed = (data.rightWheelAngularSpeed - data.leftWheelAngularSpeed)
-		//		* WHEEL_RADIUS_IN_INCHES / (WHEEL_SEPARATION_IN_INCHES / 2.0);
+		//		* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		double angleTraveled = (data.rightWheelDeltaAngularDistance - data.leftWheelDeltaAngularDistance)
-				* WHEEL_RADIUS_IN_INCHES / HALF_WHEEL_SEPARATION_IN_INCHES;
+				* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		// Angle target is absolute.
 		angleCurrent = angleCurrent - angleTraveled;
 		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance)
@@ -214,6 +237,7 @@ public class RobotController {
 	 */
 	void sendControl() {
 		int weight = 0, weightSum = 0;
+		Error front, back;
 		
 		double angleErrorDerivative = 0, angleErrorIntegral = 0;
 		double distanceErrorDerivative = 0, distanceErrorIntegral = 0;
@@ -221,23 +245,28 @@ public class RobotController {
 		// Calculate controller terms.
 		Iterator<Error> itrFront = errorHistory.iterator();
 		Iterator<Error> itrBack = errorHistory.iterator();
-		if(!itrFront.hasNext()) {
-			throw new RuntimeException("No error recorded?");
+		for(int ctr = 0; ctr < 10; ++ctr) {
+			if(!itrFront.hasNext()) {
+				break;
+			}
+			front = itrFront.next();
 		}
-		Error front = itrFront.next();
-		Error back = null;
 		while(itrFront.hasNext()) {
 			front = itrFront.next();
 			back = itrBack.next();
+			long deltaTime = front.time - back.time;
 			
+			if(0 == deltaTime) {
+				System.out.printf("Delta time is zero.");
+				continue;
+			}
 			angleErrorDerivative += weight * (front.angleError - back.angleError)
-					/ (front.time - back.time);
+					/ deltaTime;
 			distanceErrorDerivative += weight * (front.distanceError - back.distanceError)
-					/ (front.time - back.time);
+					/ deltaTime;
 			
-			angleErrorIntegral += (front.angleError - back.angleError) * (front.time - back.time);
-			angleErrorIntegral += (front.angleError - back.angleError) * (front.time - back.time);
-			
+			angleErrorIntegral += front.angleError * deltaTime;
+			distanceErrorIntegral += front.distanceError * deltaTime;
 
 			weightSum += weight;
 			++weight;
@@ -273,37 +302,41 @@ public class RobotController {
 		
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");
-			System.out.printf("\tP_ROT:%.2f\n", P_ROT);
-			System.out.printf("\tI_ROT:%.2f\n", I_ROT);
-			System.out.printf("\tD_ROT:%.2f\n", D_ROT);
-			System.out.printf("\tangleError:%.2f\n", angleError);
-			System.out.printf("\tangleErrorIntegral:%.2f\n", angleErrorIntegral);
-			System.out.printf("\tangleErrorDerivative:%.2f\n", angleErrorDerivative);
-			System.out.printf("\trotational control:%.2f\n", rotationalControl);
+			System.out.printf("\tP_ROT:\t%.2f\n", P_ROT);
+			System.out.printf("\tI_ROT:\t%.2f\n", I_ROT);
+			System.out.printf("\tD_ROT:\t%.2f\n", D_ROT);
+			System.out.printf("\tangleError:\t%.2f\n", angleError);
+			System.out.printf("\tangleErrorIntegral:\t%.2f\n", angleErrorIntegral);
+			System.out.printf("\tangleErrorDerivative:\t%.2f\n", angleErrorDerivative);
+			System.out.printf("\trotational control:\t%.2f\n", rotationalControl);
 			System.out.printf("Translational control:\n");
-			System.out.printf("\tP_ROT:%.2f\n", P_TRANS);
-			System.out.printf("\tI_ROT:%.2f\n", I_TRANS);
-			System.out.printf("\tD_ROT:%.2f\n", D_TRANS);
-			System.out.printf("\tangleError:%.2f\n", angleError);
-			System.out.printf("\tdistanceErrorIntegral:%.2f\n", distanceErrorIntegral);
-			System.out.printf("\tdistanceErrorDerivative:%.2f\n", distanceErrorDerivative);
-			System.out.printf("\ttranslational control:%.2f\n", translationalControl);
-			System.out.printf("Left wheel control:%.2f\n", leftWheelControl);
-			System.out.printf("Right wheel control:%.2f\n", rightWheelControl);
+			System.out.printf("\tP_ROT:\t%.2f\n", P_TRANS);
+			System.out.printf("\tI_ROT:\t%.2f\n", I_TRANS);
+			System.out.printf("\tD_ROT:\t%.2f\n", D_TRANS);
+			System.out.printf("\tangleError:\t%.2f\n", angleError);
+			System.out.printf("\tdistanceErrorIntegral:\t%.2f\n", distanceErrorIntegral);
+			System.out.printf("\tdistanceErrorDerivative:\t%.2f\n", distanceErrorDerivative);
+			System.out.printf("\ttranslational control:\t%.2f\n", translationalControl);
+			System.out.printf("Left wheel control:\t%.2f\n", leftWheelControl);
+			System.out.printf("Right wheel control:\t%.2f\n", rightWheelControl);
 
 			debug();
 		}
 		
-		comm.transmit();
+		if(!NO_COMM) {
+			comm.transmit();
+		}
 	}
 	
 	private void debug() {
-		System.out.printf("Controller info:\n");
-		System.out.printf("\tangleError:\n", error.angleError);
-		System.out.printf("\tdistanceError:\n", error.distanceError);
-		System.out.printf("\tangleCurrent:\n", angleCurrent);
-		System.out.printf("\tangleTarget:\n", angleTarget);
-		System.out.printf("\tangleTarget:\n", distanceTarget);
+		if(DEBUG) {
+			System.out.printf("Controller info:\n");
+			System.out.printf("\tangleCurrent:\t%.2f\n", angleCurrent);
+			System.out.printf("\tangleError:\t%.2f\n", error.angleError);
+			System.out.printf("\tangleTarget:\t%.2f\n", angleTarget);
+			System.out.printf("\tdistanceError:\t%.2f\n", error.distanceError);
+			System.out.printf("\tdistanceTarget:\t%.2f\n", distanceTarget);
+		}
 	}
 	
 	private static class Error {
