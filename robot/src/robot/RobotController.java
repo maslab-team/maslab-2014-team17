@@ -11,7 +11,6 @@ import comm.MapleComm;
 
 import devices.actuators.Cytron;
 import devices.sensors.Encoder;
-import devices.sensors.Gyroscope;
 
 /**
  * Contains methods necessary to control the robot and to
@@ -34,9 +33,9 @@ import devices.sensors.Gyroscope;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = true;
+	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 8.0;
@@ -73,7 +72,7 @@ public class RobotController {
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
-	private Gyroscope gyroscope;
+	//private Gyroscope gyroscope;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -97,15 +96,9 @@ public class RobotController {
 	// private double positionCurrent;
 	
 	RobotController(String port) {
-		if(NO_COMM) {
-			this.comm = null;
-		} else {
-			this.comm = new MapleComm(port);
-			setUpComm();
-		}
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
-		this.gyroscope = new Gyroscope(GYROSCOPE_SPI_PORT, GYROSCOPE_SS_PIN);
+		//this.gyroscope = new Gyroscope(GYROSCOPE_SPI_PORT, GYROSCOPE_SS_PIN);
 		this.leftEncoder = new Encoder(LEFT_ENCODER_PIN_A, LEFT_ENCODER_PIN_B);
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
 		this.sensorHistory = new SensorDataHistory();
@@ -115,6 +108,13 @@ public class RobotController {
 		updateError();
 		this.errorHistory = new BoundedQueue<Error>();
 		this.errorHistory.add(this.error);
+		
+		if(NO_COMM) {
+			this.comm = null;
+		} else {
+			this.comm = new MapleComm(port);
+			setUpComm();
+		}
 	}
 	
 	/**
@@ -146,7 +146,7 @@ public class RobotController {
 	private void setUpComm() {
 		comm.registerDevice(leftWheel);
 		comm.registerDevice(rightWheel);
-		comm.registerDevice(gyroscope);
+		//comm.registerDevice(gyroscope);
 		comm.registerDevice(leftEncoder);
 		comm.registerDevice(rightEncoder);
 
@@ -196,8 +196,8 @@ public class RobotController {
 		
 		// Retrieve data
 		SensorData data = new SensorData();
-		data.gyroAngle = gyroscope.getTheta();
-		data.gyroAngularSpeed = gyroscope.getOmega();
+		//data.gyroAngle = gyroscope.getTheta();
+		//data.gyroAngularSpeed = gyroscope.getOmega();
 		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = leftEncoder.getDeltaAngularDistance();

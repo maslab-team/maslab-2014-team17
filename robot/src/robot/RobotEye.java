@@ -3,7 +3,6 @@ package robot;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +44,9 @@ import org.opencv.imgproc.Imgproc;
  *
  */
 public class RobotEye {
+
+	/** Turn on to enable display. */
+	private static final boolean DISPLAY = false;
 	
 	/** Hough line constants. */
 	private static final double HOUGH_RHO = 1;
@@ -70,8 +72,6 @@ public class RobotEye {
 	
 	/** Display constants. */
 	private static final int DISPLAY_THICKNESS = 3;
-	/* Turn on to enable display. */
-	private static final boolean DISPLAY = true;
 	
 	/** Color constants. */
 	private static final int RED_BALL_HUE = 240;

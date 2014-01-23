@@ -12,7 +12,7 @@ import robot.datautils.MotionData;
  */
 public class RobotBrain {
 	
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	private static final int SLEEP_TIME_MILLIS = 5;
 	
 	private RobotEye eye;
@@ -127,7 +127,7 @@ public class RobotBrain {
 		this.elapsedTime = System.currentTimeMillis() - startTime;
 		++counter;
 		updateWorld();
-		//MotionData mData = controller.getMotionData();
+		MotionData mData = controller.getMotionData();
 		
 		if(elapsedTime < 1000 * 60 * 1) {
 			

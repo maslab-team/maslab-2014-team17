@@ -4,8 +4,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import comm.BotClientMap;
 import robot.RobotEye;
+
+import comm.BotClientMap;
 
 /**
  * Keeps track of the objects in the world.
@@ -39,8 +40,8 @@ public class RobotWorld {
 	}
 	
 	/**
-	 * Create a new instance of robot world from detected lines
-	 * and circles.  Uses the circles to form balls and walls.
+	 * Create a new instance of robot world from detected
+	 * circles.  Uses the circles to form balls.
 	 * 
 	 * @param lines
 	 * @param circles
@@ -52,9 +53,8 @@ public class RobotWorld {
 	}
 	
 	/**
-	 * Updates the world given the lines and circles seen by the eye.
+	 * Updates the world given the circles seen by the eye.
 	 * 
-	 * @param lines
 	 * @param redCircles
 	 * @param greenCircles
 	 */
@@ -75,10 +75,9 @@ public class RobotWorld {
 	}
 	
 	/**
-	 * Updates the world given the lines and circles seen by the eye
+	 * Updates the world given circles seen by the eye
 	 * as an instance of RobotEye.Data.
 	 * 
-	 * @param lines
 	 * @param redCircles
 	 * @param greenCircles
 	 */
