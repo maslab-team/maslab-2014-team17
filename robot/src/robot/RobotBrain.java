@@ -12,7 +12,9 @@ import robot.datautils.MotionData;
  */
 public class RobotBrain {
 	
-	private static final boolean DEBUG = true;
+	private static final boolean SPEAK = true;
+	private static final int SPEAK_DELAY_MILLIS = 5000;
+	private static final boolean DEBUG = false;
 	private static final int SLEEP_TIME_MILLIS = 5;
 	
 	private RobotEye eye;
@@ -32,6 +34,14 @@ public class RobotBrain {
 	
 	/** Indicates whether there is new data from the eye. */
 	private volatile boolean newEyeData = false;
+	
+	/** Mouth */
+	private RobotMouth mouth;
+	
+	/** Strategy (for speaking) */
+	private String strategy;
+	
+	private long speakTimeMarker;
 	
 	/*/** Represents position target in xy-plane.
 	private Point positionTarget;*/
@@ -91,6 +101,11 @@ public class RobotBrain {
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
 		this.startLooking();
+		if(SPEAK) {
+			speakTimeMarker = 0;
+			mouth = new RobotMouth();
+			strategy = "I'm getting ready to roomba.";
+		}
 	}
 	
 	private void startLooking() {
@@ -122,32 +137,57 @@ public class RobotBrain {
 			world.update(data);
 		}
 	}
+	
+	private void speak() {
+		if(SPEAK && elapsedTime - speakTimeMarker > SPEAK_DELAY_MILLIS) {
+			mouth.speak(strategy);
+			speakTimeMarker = elapsedTime;
+		}
+	}
 
+	private void goToGreenBalls() {
+		
+		/** Update every 5 seconds. */
+		if(elapsedTime - timeMarker > 5000) {
+
+			RobotWorld.Ball greenBall = world.getLargestGreenBall();
+			if(greenBall != null) {
+				strategy = "I found a green ball! I'm going to go eat it.";
+				angleTarget = pixelToAngle(greenBall.getX());
+				timeMarker = elapsedTime;
+				//TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
+			} else {
+				strategy = "I'm trying to find some delicious green balls to eat.";
+			}
+
+			controller.setRelativeTarget(angleTarget, distanceTarget);
+		}
+	}
+	
+	private void depositBalls() {
+		strategy = "I ate too many green balls.  I'm going to put some in the reactors.";
+	}
+	
+	private void goToRedBalls() {
+		strategy = "Time for dessert - I'm going to find some red balls.";
+	}
+	
 	void loop() {
 		this.elapsedTime = System.currentTimeMillis() - startTime;
 		++counter;
 		updateWorld();
+		speak();
 		MotionData mData = controller.getMotionData();
 		
 		if(elapsedTime < 1000 * 60 * 1) {
-			
-			/** Update every 5 seconds. */
-			if(elapsedTime - timeMarker > 5000) {
-
-				RobotWorld.Ball greenBall = world.getLargestGreenBall();
-				if(greenBall != null) {
-					angleTarget = pixelToAngle(greenBall.getX());
-					//TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
-				}
-				controller.setRelativeTarget(angleTarget, distanceTarget);
-				timeMarker = elapsedTime;
-			}
-			
-		} /*else if (elapsedTime < 1000 * 60 * 3) {
-			//TODO: Figure out what to do
-		}*/
-		else {
+			goToGreenBalls();			
+		} else if (elapsedTime < 1000 * 60 * 2) {
+			depositBalls();
+		} else if (elapsedTime < 1000 * 60 * 3) {
+			goToRedBalls();
+		} else {
 			stopLooking();
+			strategy = "Game over.  I probably lost.";
 			System.out.println("Game over.");
 		}
 		
@@ -185,4 +225,5 @@ public class RobotBrain {
 			System.out.printf("\tAngle Target:\t%.2f\n", angleTarget);
 		}
 	}
+	
 }

@@ -4,9 +4,9 @@
  [ ] dagu motor controller
  [X] cytron motor controller
  [X] encoder
- [X] gyro
+ [ ] gyro
  [ ] servo
- [X] ultrasonic
+ [ ] ultrasonic
  [X] IR
  [X] analog read
  [X] analog write
@@ -20,7 +20,7 @@
 #define GET 'G'
 #define SET 'S'
 #define RESPONSE 'R'
-#define END ((char) 0xff)
+#define END 'Z' //((char) 0xff)
 
 
 /**
@@ -608,7 +608,7 @@ void firmwareInit() {
       break;
    /** case GYROSCOPE_CODE:
       deviceList.add(new Gyroscope());
-      break;*/
+      break;
    /** case ULTRASONIC_CODE:
       deviceList.add(new Ultrasonic());
       break;*/
@@ -625,6 +625,9 @@ void firmwareInit() {
 
 void get() {
   if (!initStatus) {
+    Serial.write(RESPONSE);
+    deviceList.get();
+    Serial.write(END);
     // send WTF packet
     return;
   }
@@ -644,7 +647,6 @@ void set() {
 
   deviceList.set();
 }
-
 
 
 
