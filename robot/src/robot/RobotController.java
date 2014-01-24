@@ -6,10 +6,9 @@ import robot.datautils.BoundedQueue;
 import robot.datautils.MotionData;
 import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
-
 import comm.MapleComm;
-
 import devices.actuators.Cytron;
+import devices.sensors.AnalogInput;
 import devices.sensors.Encoder;
 
 /**
@@ -33,9 +32,9 @@ import devices.sensors.Encoder;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = false;
+	private static final boolean NO_COMM = true;
 	
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 8.0;
@@ -46,18 +45,18 @@ public class RobotController {
 	/**
 	 * Pins and ports.
 	 */
-	private static final int LEFT_CYTRON_PWM_PIN = 1;
-	private static final int LEFT_CYTRON_DIR_PIN = 2;
-	private static final int RIGHT_CYTRON_PWM_PIN = 6;
-	private static final int RIGHT_CYTRON_DIR_PIN = 7;
+	private static final int LEFT_CYTRON_PWM_PIN = 0;
+	private static final int LEFT_CYTRON_DIR_PIN = 0;
+	private static final int RIGHT_CYTRON_PWM_PIN = 0;
+	private static final int RIGHT_CYTRON_DIR_PIN = 0;
 
 	private static final int GYROSCOPE_SPI_PORT = 1; // pins 10-13
 	private static final int GYROSCOPE_SS_PIN = 9;
 	
-	private static final int LEFT_ENCODER_PIN_A = 36;
-	private static final int LEFT_ENCODER_PIN_B = 35;
-	private static final int RIGHT_ENCODER_PIN_A = 34;
-	private static final int RIGHT_ENCODER_PIN_B = 33;
+	private static final int LEFT_ENCODER_PIN_A = 0;
+	private static final int LEFT_ENCODER_PIN_B = 0;
+	private static final int RIGHT_ENCODER_PIN_A = 0;
+	private static final int RIGHT_ENCODER_PIN_B = 0;
 	
 	/** PID Controller paramaters. */
 	private static final double P_ROT = 0.03;
