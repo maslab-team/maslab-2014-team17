@@ -4,7 +4,7 @@ import model.RobotWorld;
 
 public class RobotMain {
 	
-	private static final String maplePort = "/dev/tty.usbserial-A700dB1m";
+	private static final String maplePort = "/dev/tty.usbmodemfd121";
 	private static final int cameraNum = 0;
 	
 	public static void main(String[] args) {

@@ -6,9 +6,10 @@ import robot.datautils.BoundedQueue;
 import robot.datautils.MotionData;
 import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
+
 import comm.MapleComm;
+
 import devices.actuators.Cytron;
-import devices.sensors.AnalogInput;
 import devices.sensors.Encoder;
 
 /**
@@ -32,9 +33,9 @@ import devices.sensors.Encoder;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = true;
+	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 8.0;

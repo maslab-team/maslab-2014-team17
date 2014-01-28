@@ -14,7 +14,7 @@ public class RobotBrain {
 	
 	private static final boolean SPEAK = true;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	private static final int SLEEP_TIME_MILLIS = 5;
 	
 	private RobotEye eye;
@@ -178,7 +178,8 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-		
+		controller.setRelativeTarget(0.5, 0.5);
+/*
 		if(elapsedTime < 1000 * 60 * 1) {
 			goToGreenBalls();			
 		} else if (elapsedTime < 1000 * 60 * 2) {
@@ -189,7 +190,7 @@ public class RobotBrain {
 			stopLooking();
 			strategy = "Game over.  I probably lost.";
 			System.out.println("Game over.");
-		}
+		}*/
 		
 		controller.sendControl();
 		debug();
