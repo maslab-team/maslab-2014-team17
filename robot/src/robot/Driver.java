@@ -37,8 +37,13 @@ public class Driver {
     
     void updateReading() {
         comm.updateSensorData();
+<<<<<<< HEAD
         System.out.println("left: " + leftEncoder.getTotalAngularDistance());
         System.out.println("right: " + rightEncoder.getTotalAngularDistance());
+=======
+        //System.out.println("omega: " + gyro.getOmega());
+        System.out.println("theta: " + gyro.getTheta());
+>>>>>>> d8c77e0ba59665ad34deaae8216a811cdcdb7b40
     }
     
     void rotateToAngle(double theta) throws InterruptedException {

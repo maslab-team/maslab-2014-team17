@@ -8,7 +8,6 @@ import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
 import comm.MapleComm;
 import devices.actuators.Cytron;
-import devices.sensors.AnalogInput;
 import devices.sensors.Encoder;
 
 /**
@@ -32,12 +31,12 @@ import devices.sensors.Encoder;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = true;
+	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	
 	/** Wheel constants. */
-	private static final double WHEEL_SEPARATION_IN_INCHES = 8.0;
+	private static final double WHEEL_SEPARATION_IN_INCHES = 12.0;
 	private static final double HALF_WHEEL_SEPARATION_IN_INCHES = WHEEL_SEPARATION_IN_INCHES / 2.0;
 	private static final double WHEEL_DIAMETER_IN_INCHES = 3.88;
 	private static final double WHEEL_RADIUS_IN_INCHES = WHEEL_DIAMETER_IN_INCHES / 2.0;
@@ -45,33 +44,28 @@ public class RobotController {
 	/**
 	 * Pins and ports.
 	 */
-	private static final int LEFT_CYTRON_PWM_PIN = 0;
-	private static final int LEFT_CYTRON_DIR_PIN = 0;
-	private static final int RIGHT_CYTRON_PWM_PIN = 0;
-	private static final int RIGHT_CYTRON_DIR_PIN = 0;
+	private static final int LEFT_CYTRON_PWM_PIN = 9;
+	private static final int LEFT_CYTRON_DIR_PIN = 8;
+	private static final int RIGHT_CYTRON_PWM_PIN = 6;
+	private static final int RIGHT_CYTRON_DIR_PIN = 5;
 
-	private static final int GYROSCOPE_SPI_PORT = 1; // pins 10-13
-	private static final int GYROSCOPE_SS_PIN = 9;
-	
-	private static final int LEFT_ENCODER_PIN_A = 0;
-	private static final int LEFT_ENCODER_PIN_B = 0;
-	private static final int RIGHT_ENCODER_PIN_A = 0;
-	private static final int RIGHT_ENCODER_PIN_B = 0;
+	private static final int LEFT_ENCODER_PIN_A = 2;
+	private static final int LEFT_ENCODER_PIN_B = 1;
+	private static final int RIGHT_ENCODER_PIN_A = 3;
+	private static final int RIGHT_ENCODER_PIN_B = 4;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.03;
+	private static final double P_ROT = 0.04;
 	private static final double I_ROT = 0;
 	private static final double D_ROT = 0;
-	private static final double P_TRANS = 0.03;
+	private static final double P_TRANS = 0.01;
 	private static final double I_TRANS = 0;
 	private static final double D_TRANS = 0;
-
-	
+	private static final double MAX_SPEED = 0.25;
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
-	//private Gyroscope gyroscope;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -113,6 +107,7 @@ public class RobotController {
 		} else {
 			this.comm = new MapleComm(port);
 			setUpComm();
+			setUpShutdownHooks();
 		}
 	}
 	
@@ -127,14 +122,8 @@ public class RobotController {
 	}
 	
 	private void updateError() {
-		double angleError = this.angleTarget - this.angleCurrent;
-		while (angleError > Math.PI) {
-			angleError -= 2*Math.PI;
-		}
-		while (angleError < -1.0 * Math.PI) {
-			angleError += 2*Math.PI;
-		}
-		this.error = new Error(this.angleTarget - this.angleCurrent, this.distanceTarget);
+		double angleError = toAngle(this.angleTarget - this.angleCurrent);
+		this.error = new Error(angleError, this.distanceTarget);
 	}
 	
 	/*TODO:
@@ -142,10 +131,22 @@ public class RobotController {
 		
 	}*/
 	
+	/**
+	 * Stops motors on program exit.
+	 */
+	private void setUpShutdownHooks() {
+		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+			public void run() {
+				leftWheel.setSpeed(0);
+				rightWheel.setSpeed(0);
+				comm.transmit();
+			}
+		}));
+	}
+	
 	private void setUpComm() {
 		comm.registerDevice(leftWheel);
 		comm.registerDevice(rightWheel);
-		//comm.registerDevice(gyroscope);
 		comm.registerDevice(leftEncoder);
 		comm.registerDevice(rightEncoder);
 
@@ -153,7 +154,7 @@ public class RobotController {
 	}
 	
 	void setTarget(double angle, double distance) {
-		this.angleTarget = angle;
+		this.angleTarget = toAngle(angle);
 		this.distanceTarget = distance;
 		updateError();
 		errorHistory.clear();
@@ -162,6 +163,16 @@ public class RobotController {
 	
 	void setRelativeTarget(double relAngle, double distance) {
 		setTarget(this.angleCurrent + relAngle, distance);
+	}
+	
+	private double toAngle(double angle) {
+		double retAngle = angle % (2 * Math.PI);
+		while(retAngle < -1.0 * Math.PI) {
+			retAngle += 2 * Math.PI;
+		} while(retAngle > Math.PI) {
+			retAngle -= 2 * Math.PI;
+		}
+		return retAngle;
 	}
 	
 	/**
@@ -195,8 +206,6 @@ public class RobotController {
 		
 		// Retrieve data
 		SensorData data = new SensorData();
-		//data.gyroAngle = gyroscope.getTheta();
-		//data.gyroAngularSpeed = gyroscope.getOmega();
 		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = leftEncoder.getDeltaAngularDistance();
@@ -292,32 +301,32 @@ public class RobotController {
 		double leftWheelControl = translationalControl - rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
 		double rightWheelControl = translationalControl + rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
 		
-		// Cap control magnitude at 1.0.
-		leftWheelControl = (Math.abs(leftWheelControl) > 1.0) ? Math.signum(leftWheelControl) : leftWheelControl;
-		rightWheelControl = (Math.abs(rightWheelControl) > 1.0) ? Math.signum(rightWheelControl) : rightWheelControl;
+		// Cap control magnitude at MAX_SPEED.
+		leftWheelControl = (Math.abs(leftWheelControl) > MAX_SPEED) ? Math.signum(leftWheelControl)*MAX_SPEED : leftWheelControl;
+		rightWheelControl = (Math.abs(rightWheelControl) > MAX_SPEED) ? Math.signum(rightWheelControl)*MAX_SPEED : rightWheelControl;
 
 		leftWheel.setSpeed(leftWheelControl);
 		rightWheel.setSpeed(rightWheelControl);
-		
+
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");
-			System.out.printf("\tP_ROT:\t%.2f\n", P_ROT);
-			System.out.printf("\tI_ROT:\t%.2f\n", I_ROT);
-			System.out.printf("\tD_ROT:\t%.2f\n", D_ROT);
-			System.out.printf("\tangleError:\t%.2f\n", angleError);
-			System.out.printf("\tangleErrorIntegral:\t%.2f\n", angleErrorIntegral);
-			System.out.printf("\tangleErrorDerivative:\t%.2f\n", angleErrorDerivative);
-			System.out.printf("\trotational control:\t%.2f\n", rotationalControl);
+			System.out.printf("\tP_ROT:\t%.5f\n", P_ROT);
+			System.out.printf("\tI_ROT:\t%.5f\n", I_ROT);
+			System.out.printf("\tD_ROT:\t%.5f\n", D_ROT);
+			System.out.printf("\tangleError:\t%.5f\n", angleError);
+			System.out.printf("\tangleErrorIntegral:\t%.5f\n", angleErrorIntegral);
+			System.out.printf("\tangleErrorDerivative:\t%.5f\n", angleErrorDerivative);
+			System.out.printf("\trotational control:\t%.5f\n", rotationalControl);
 			System.out.printf("Translational control:\n");
-			System.out.printf("\tP_ROT:\t%.2f\n", P_TRANS);
-			System.out.printf("\tI_ROT:\t%.2f\n", I_TRANS);
-			System.out.printf("\tD_ROT:\t%.2f\n", D_TRANS);
-			System.out.printf("\tangleError:\t%.2f\n", angleError);
-			System.out.printf("\tdistanceErrorIntegral:\t%.2f\n", distanceErrorIntegral);
-			System.out.printf("\tdistanceErrorDerivative:\t%.2f\n", distanceErrorDerivative);
-			System.out.printf("\ttranslational control:\t%.2f\n", translationalControl);
-			System.out.printf("Left wheel control:\t%.2f\n", leftWheelControl);
-			System.out.printf("Right wheel control:\t%.2f\n", rightWheelControl);
+			System.out.printf("\tP_ROT:\t%.5f\n", P_TRANS);
+			System.out.printf("\tI_ROT:\t%.5f\n", I_TRANS);
+			System.out.printf("\tD_ROT:\t%.5f\n", D_TRANS);
+			System.out.printf("\tangleError:\t%.5f\n", angleError);
+			System.out.printf("\tdistanceErrorIntegral:\t%.5f\n", distanceErrorIntegral);
+			System.out.printf("\tdistanceErrorDerivative:\t%.5f\n", distanceErrorDerivative);
+			System.out.printf("\ttranslational control:\t%.5f\n", translationalControl);
+			System.out.printf("Left wheel control:\t%.5f\n", leftWheelControl);
+			System.out.printf("Right wheel control:\t%.5f\n", rightWheelControl);
 
 			debug();
 		}
@@ -330,11 +339,11 @@ public class RobotController {
 	private void debug() {
 		if(DEBUG) {
 			System.out.printf("Controller info:\n");
-			System.out.printf("\tangleCurrent:\t%.2f\n", angleCurrent);
-			System.out.printf("\tangleError:\t%.2f\n", error.angleError);
-			System.out.printf("\tangleTarget:\t%.2f\n", angleTarget);
-			System.out.printf("\tdistanceError:\t%.2f\n", error.distanceError);
-			System.out.printf("\tdistanceTarget:\t%.2f\n", distanceTarget);
+			System.out.printf("\tangleCurrent:\t%.5f\n", angleCurrent);
+			System.out.printf("\tangleError:\t%.5f\n", error.angleError);
+			System.out.printf("\tangleTarget:\t%.5f\n", angleTarget);
+			System.out.printf("\tdistanceError:\t%.5f\n", error.distanceError);
+			System.out.printf("\tdistanceTarget:\t%.5f\n", distanceTarget);
 		}
 	}
 	

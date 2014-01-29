@@ -21,7 +21,7 @@
 #define SET 'S'
 #define RESPONSE 'R'
 #define END 'Z' //((char) 0xff)
-
+#define READY 'Q'
 
 /**
 //===================================
@@ -264,21 +264,18 @@ public:
     pwmPin = serialRead();
     pinMode(dirPin, OUTPUT);
     pinMode(pwmPin, OUTPUT);
-    setSpeed(0);
+    setSpeed(0, false);
   }
 
   void set() {
-    uint8_t msb = serialRead();
-    uint8_t lsb = serialRead();
-    uint16_t speed = msb;
-    speed = (speed << 8) + lsb;
-    setSpeed(speed);
+    uint8_t reverse = serialRead();
+    uint8_t speed = serialRead();
+    setSpeed(speed, (reverse == 0) ? false : true);
   }
 
-  void setSpeed(uint16_t speed) {
-    bool reverse = speed & 0x8000;
+  void setSpeed(uint8_t speed, bool reverse) {
     digitalWrite(dirPin, reverse);
-    analogWrite(pwmPin, reverse ? 2 * (speed ^ 0xFFFF) : 2 * speed);
+    analogWrite(pwmPin, reverse ? speed ^ 0xFF : speed);
   }
 };
 
@@ -500,12 +497,19 @@ public:
   Encoder() {
     pinA = serialRead();
     pinB = serialRead();
+    int interrupt;
     
+    switch(pinA) {
+      case 2 : interrupt = 0; break;
+      case 3 : interrupt = 1; break;
+      default: interrupt = -1;
+    }
+  
     pinMode(pinA, INPUT);
     pinMode(pinB, INPUT);
     
     encoders[encoderCount] = this;
-    attachInterrupt(pinA, *(encoderISRList[encoderCount]), RISING);
+    attachInterrupt(interrupt, *(encoderISRList[encoderCount]), RISING);
     encoderCount++;
     
     ticks = 0;
@@ -553,7 +557,6 @@ DeviceList deviceList;
 void setup() {
   Serial.begin(9600);
   while(!Serial); // Wait
-  
   pinMode(LED_PIN, OUTPUT);
   initStatus = false;
 }
@@ -649,7 +652,7 @@ void set() {
 }
 
 
-
+/**
 // Force init to be called *first*, i.e. before static object allocation.
 // Otherwise, statically allocated objects that need libmaple may fail.
 __attribute__((constructor)) void premain() {
@@ -664,4 +667,4 @@ int main(void) {
     }
 
     return 0;
-}
+}*/
