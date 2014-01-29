@@ -106,8 +106,10 @@ public class RobotBrain {
 			mouth = new RobotMouth();
 			strategy = "I'm getting ready to roomba.";
 		}
+
+		controller.setRelativeTarget(0.5, 0.0);
 	}
-	
+	//findme
 	private void startLooking() {
 		eyeThread = new Thread(new Runnable() {
 			public void run() {
@@ -178,7 +180,6 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-		controller.setRelativeTarget(0.5, 0.5);
 /*
 		if(elapsedTime < 1000 * 60 * 1) {
 			goToGreenBalls();			

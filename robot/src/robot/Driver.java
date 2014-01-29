@@ -31,7 +31,7 @@ public class Driver {
     
     void updateReading() {
         comm.updateSensorData();
-        System.out.println("omega: " + gyro.getOmega());
+        //System.out.println("omega: " + gyro.getOmega());
         System.out.println("theta: " + gyro.getTheta());
     }
     
