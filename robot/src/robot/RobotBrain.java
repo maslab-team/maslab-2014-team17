@@ -13,9 +13,9 @@ import robot.datautils.MotionData;
  */
 public class RobotBrain {
 	
-	private static final boolean SPEAK = true;
+	private static final boolean SPEAK = false;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
 	
@@ -173,7 +173,7 @@ public class RobotBrain {
 	
 	private void goToRedBalls() {
 		/** Update every 3 seconds. */
-		if(elapsedTime - timeMarker > 7000) {
+		if(elapsedTime - timeMarker > 3000) {
 
 			RobotWorld.Ball redBall = world.getLargestRedBall();
 			if(redBall != null) {
@@ -191,6 +191,12 @@ public class RobotBrain {
 		}
 	}
 	
+	public void reposition() {
+        angleTarget = Math.PI/2;
+        distanceTarget = 0;
+        controller.setRelativeTarget(angleTarget, distanceTarget);
+	}
+	
 	public void setup() {
 		// Wait for arduino to be ready.
 		try {
@@ -205,13 +211,17 @@ public class RobotBrain {
 			while(!client.gameStarted());
 			System.out.println("The game has started!");
 		}
-		mouth.speak("The game has started!");
+		//mouth.speak("The game has started!");
 		
 		this.world = new RobotWorld(client);
 		this.controller.setCurrentAngle(world.getMap().startPose.theta);
 		this.angleTarget = 0;//world.getMap().startPose.theta;
 		this.startLooking();
 		controller.setUpComm();
+		 
+        angleTarget = 0;
+        distanceTarget = 0;
+        controller.setRelativeTarget(angleTarget, distanceTarget);
 	}
 	
 	void loop() {
@@ -220,9 +230,13 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-		if (elapsedTime < 1000 * 60 * 3) {
-			goToRedBalls();
-		}
+//		if (elapsedTime < 1000 * 60 * 3) {
+//		    if (!controller.closeToWall()) {
+//		        goToRedBalls();
+//		    } else {
+//		        reposition();
+//		    }
+//		}
 		/*
 		if(elapsedTime < 1000 * 60 * 1) {
 			goToGreenBalls();			
@@ -230,11 +244,12 @@ public class RobotBrain {
 			depositBalls();
 		} else if (elapsedTime < 1000 * 60 * 3) {
 			goToRedBalls();
-		} */else {
-			stopLooking();
-			strategy = "Game over.  I probably lost.";
-			System.out.println("Game over.");
-		}
+		} */
+//		else {
+//			stopLooking();
+//			strategy = "Game over.  I probably lost.";
+//			System.out.println("Game over.");
+//		}
 		
 		controller.sendControl();
 		debug();

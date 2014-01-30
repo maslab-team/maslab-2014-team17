@@ -16,6 +16,7 @@ public class SensorData {
 	public double gyroAngle;
 	public double leftWheelDeltaAngularDistance;
 	public double rightWheelDeltaAngularDistance;
+	public boolean irInRange;
 	
 	public long time;
 	
@@ -24,12 +25,13 @@ public class SensorData {
 		rightWheelAngularSpeed = 0;
 		gyroAngularSpeed = 0;
 		gyroAngle = 0;
+		irInRange = false;
 		time = 0;
 	}
 	
 	SensorData(double leftWheelAngularSpeed, double rightWheelAngularSpeed,
 			double leftWheelDeltaAngularDistance, double rightWheelDeltaAngularDistance,
-			double gyroAngularSpeed, double gyroAngle, long time) {
+			double gyroAngularSpeed, double gyroAngle, boolean irInRange, long time) {
 		this.leftWheelAngularSpeed = leftWheelAngularSpeed;
 		this.rightWheelAngularSpeed = rightWheelAngularSpeed;
 		this.gyroAngularSpeed = gyroAngularSpeed;
@@ -37,6 +39,7 @@ public class SensorData {
 		this.time = time;
 		this.leftWheelDeltaAngularDistance = leftWheelDeltaAngularDistance;
 		this.rightWheelDeltaAngularDistance = rightWheelDeltaAngularDistance;
+		this.irInRange = irInRange;
 	}
 	
 	/**
@@ -53,6 +56,7 @@ public class SensorData {
 		this.time = original.time;
 		this.leftWheelDeltaAngularDistance = original.leftWheelDeltaAngularDistance;
 		this.rightWheelDeltaAngularDistance = original.rightWheelDeltaAngularDistance;
+		this.irInRange = original.irInRange;
 	}
 	
 }

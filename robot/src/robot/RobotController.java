@@ -9,6 +9,7 @@ import robot.datautils.SensorDataHistory;
 import comm.MapleComm;
 import devices.actuators.Cytron;
 import devices.sensors.Encoder;
+import devices.sensors.Infrared;
 
 /**
  * Contains methods necessary to control the robot and to
@@ -33,7 +34,7 @@ public class RobotController {
 	/** Set true to disable communication with the Maple. */
 	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 12.0;
@@ -54,6 +55,8 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_A = 2;
 	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
+	private static final int IR_PIN = 0;
+	
 	/** PID Controller paramaters. */
 	private static final double P_ROT = 0.02;
 	private static final double I_ROT = 0.00;
@@ -66,6 +69,7 @@ public class RobotController {
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
+	private Infrared ir;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -87,6 +91,9 @@ public class RobotController {
 	 */
 	private double angleCurrent;
 	// private double positionCurrent;
+	
+	private int leftSign;
+	private int rightSign;
 	
 	RobotController(String port) {
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
@@ -175,6 +182,12 @@ public class RobotController {
 		return retAngle;
 	}
 	
+	public boolean closeToWall() {
+	    //TODO: use SensorDataHistory
+	    //return ir.inRange();
+	    return false;
+	}
+	
 	/**
 	void setPositionTarget(Point target) {
 		
@@ -206,14 +219,14 @@ public class RobotController {
 		
 		// Retrieve data
 		SensorData data = new SensorData();
-		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
-		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
-		data.leftWheelDeltaAngularDistance = leftEncoder.getDeltaAngularDistance();
-		data.rightWheelDeltaAngularDistance = -1.0 * rightEncoder.getDeltaAngularDistance();
+		data.leftWheelAngularSpeed = leftSign * leftEncoder.getAngularSpeed();
+		data.rightWheelAngularSpeed = rightSign * rightEncoder.getAngularSpeed();
+		data.leftWheelDeltaAngularDistance = leftSign * Math.abs(leftEncoder.getDeltaAngularDistance());
+		data.rightWheelDeltaAngularDistance = rightSign * Math.abs(rightEncoder.getDeltaAngularDistance());
+		System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
+		//data.irInRange = ir.inRange();
+		data.irInRange = false;
 		data.time = System.currentTimeMillis();
-		
-		System.out.println("LEFT: " + data.leftWheelDeltaAngularDistance);
-		System.out.println("RIGHT: " + data.rightWheelDeltaAngularDistance);
 		
 		// Add data to history
 		sensorHistory.add(data);
@@ -228,10 +241,11 @@ public class RobotController {
 				* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		// Angle target is absolute.
 		angleCurrent = toAngle(angleCurrent + angleTraveled);
-		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance)
-				/ 2.0;
+		System.out.println("angleCurrent: " + angleCurrent);
+		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance) * WHEEL_RADIUS_IN_INCHES / 2.0;
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
+		System.out.println("distanceTarget: " + distanceTarget);
 		
 		updateError();
 		errorHistory.add(error);
@@ -310,6 +324,17 @@ public class RobotController {
 
 		leftWheel.setSpeed(leftWheelControl);
 		rightWheel.setSpeed(rightWheelControl);
+		
+		if(leftWheelControl >= 0) {
+		    leftSign = 1;
+		} else {
+		    leftSign = -1;
+		}
+		if(rightWheelControl >= 0) {
+		    rightSign = 1;
+		} else {
+		    rightSign = -1;
+		}
 
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");
@@ -358,6 +383,10 @@ public class RobotController {
 			this.angleError = angleError;
 			this.distanceError = distanceError;
 			this.time = System.currentTimeMillis();
+		}
+		
+		public String toString() {
+		    return "Angle error: " + angleError + "\n" + "Distance error: " + distanceError;
 		}
 	}
 }
