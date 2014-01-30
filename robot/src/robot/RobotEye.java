@@ -46,7 +46,7 @@ import org.opencv.imgproc.Imgproc;
 public class RobotEye {
 
 	/** Turn on to enable display. */
-	private static final boolean DISPLAY = true;
+	private static final boolean DISPLAY = false;
 	
 	/** Hough line constants. */
 	private static final double HOUGH_RHO = 1;
@@ -106,11 +106,10 @@ public class RobotEye {
 	 */
 	RobotEye(int n) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-
 		// Setup the camera
 		camera = new VideoCapture();
 		camera.open(n);
-		
+
 		if(DISPLAY) {
 			setUpDisplay();
 		}

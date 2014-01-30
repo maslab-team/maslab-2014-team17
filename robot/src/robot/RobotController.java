@@ -55,8 +55,8 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.02;
-	private static final double I_ROT = 0.00;
+	private static final double P_ROT = 0.04;
+	private static final double I_ROT = 0.000005;
 	private static final double D_ROT = 0.0;
 	private static final double P_TRANS = 0.0;
 	private static final double I_TRANS = 0.00;

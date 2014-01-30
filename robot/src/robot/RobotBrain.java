@@ -15,6 +15,8 @@ public class RobotBrain {
 	
 	private static final boolean SPEAK = true;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
+	private static final boolean LOOK = false;
+	private static final int CAMERA_NUMBER = 0;
 	private static final boolean DEBUG = true;
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
@@ -90,9 +92,11 @@ public class RobotBrain {
 	 * @param world
 	 * @param startTime
 	 */
-	public RobotBrain(RobotEye eye, RobotController controller,
+	public RobotBrain(RobotController controller,
 			BotClient client, long startTime) {
-		this.eye = eye;
+		if (LOOK) {
+			this.eye = new RobotEye(CAMERA_NUMBER);
+		}
 		this.controller = controller;
 		//this.controller.setCurrentPosition(world.getMap().startPose.x, world.getMap().startPose.y);
 		//this.positionTarget = new Point(world.getMap().startPose.x, world.getMap().startPose.y);
@@ -112,22 +116,24 @@ public class RobotBrain {
 	}
 
 	private void startLooking() {
-		eyeThread = new Thread(new Runnable() {
-			public void run() {
-				while(true) {
-					RobotEye.Data data = eye.process();
-					synchronized(eyeDataLock) {
-						eyeData = data;
-						newEyeData = true;
+		if (LOOK) {
+			eyeThread = new Thread(new Runnable() {
+				public void run() {
+					while(true) {
+						RobotEye.Data data = eye.process();
+						synchronized(eyeDataLock) {
+							eyeData = data;
+							newEyeData = true;
+						}
 					}
 				}
-			}
-		});
-		eyeThread.start();
+			});
+			eyeThread.start();
+		}
 	}
 	
 	private void stopLooking() {
-		eyeThread.interrupt();
+		if(LOOK) { eyeThread.interrupt(); }
 	}
 	
 	private void updateWorld() {
@@ -212,6 +218,9 @@ public class RobotBrain {
 		this.angleTarget = 0;//world.getMap().startPose.theta;
 		this.startLooking();
 		controller.setUpComm();
+		
+
+		controller.setRelativeTarget(Math.PI/2.0, 0.0);
 	}
 	
 	void loop() {
@@ -220,7 +229,7 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-		if (elapsedTime < 1000 * 60 * 3) {
+		/*if (elapsedTime < 1000 * 60 * 3) {
 			goToRedBalls();
 		}
 		/*
@@ -230,11 +239,11 @@ public class RobotBrain {
 			depositBalls();
 		} else if (elapsedTime < 1000 * 60 * 3) {
 			goToRedBalls();
-		} */else {
+		} else {
 			stopLooking();
 			strategy = "Game over.  I probably lost.";
 			System.out.println("Game over.");
-		}
+		}*/
 		
 		controller.sendControl();
 		debug();
