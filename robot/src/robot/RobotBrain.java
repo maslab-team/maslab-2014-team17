@@ -17,7 +17,7 @@ public class RobotBrain {
 	private static final int SPEAK_DELAY_MILLIS = 5000;
 	private static final boolean LOOK = false;
 	private static final int CAMERA_NUMBER = 0;
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
@@ -238,6 +238,21 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
+		
+		/** Ping pong strategy */
+		if(!controller.closeToWall()) {
+		    controller.setRelativeTarget(0.0, 5.0);
+	        controller.sendControl();
+		} else {
+		    controller.setRelativeTarget(Math.PI/2, 0.0);	      
+	        controller.sendControl();
+	        try {
+                Thread.sleep(1100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+		}
+		
 //		if (elapsedTime < 1000 * 60 * 3) {
 //		    if (!controller.closeToWall()) {
 //		        goToRedBalls();
@@ -258,8 +273,6 @@ public class RobotBrain {
 //			strategy = "Game over.  I probably lost.";
 //			System.out.println("Game over.");
 //		}
-		
-		controller.sendControl();
 		debug();
 
 		try {

@@ -57,13 +57,14 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
 	private static final int LONG_IR_PIN = 0;
-	private static final int SHORT_IR_PIN = 1;
+	private static final int SHORT_IR_1_PIN = 13;
+	private static final int SHORT_IR_2_PIN = 13;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.04;
+	private static final double P_ROT = 0.1;
 	private static final double I_ROT = 0.000005;
 	private static final double D_ROT = 0.0;
-	private static final double P_TRANS = 0.0;
+	private static final double P_TRANS = 0.1;
 	private static final double I_TRANS = 0.00;
 	private static final double D_TRANS = 0.0;
 	private static final double MAX_SPEED = 0.20;
@@ -72,7 +73,7 @@ public class RobotController {
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
 	private Infrared longIR;
-	private DigitalInput shortIR;
+	private DigitalInput shortIR1, shortIR2;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -103,6 +104,9 @@ public class RobotController {
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
 		this.leftEncoder = new Encoder(LEFT_ENCODER_PIN_A, LEFT_ENCODER_PIN_B);
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
+		this.longIR = new Infrared(LONG_IR_PIN);
+		this.shortIR1 = new DigitalInput(SHORT_IR_1_PIN);
+		this.shortIR2 = new DigitalInput(SHORT_IR_2_PIN);
 		this.sensorHistory = new SensorDataHistory();
 		this.angleTarget = 0;
 		this.distanceTarget = 0;
@@ -159,6 +163,9 @@ public class RobotController {
 		comm.registerDevice(rightWheel);
 		comm.registerDevice(rightEncoder);
 		comm.registerDevice(leftEncoder);
+		comm.registerDevice(longIR);
+		comm.registerDevice(shortIR1);
+		comm.registerDevice(shortIR2);
 
 		comm.initialize();
 	}
@@ -186,9 +193,8 @@ public class RobotController {
 	}
 	
 	public boolean closeToWall() {
-	    //TODO: use SensorDataHistory
-	    //return ir.inRange();
-	    return false;
+	    //use SensorDataHistory?
+	    return (!shortIR1.getValue() || !shortIR2.getValue());
 	}
 	
 	/**
@@ -226,9 +232,8 @@ public class RobotController {
 		data.rightWheelAngularSpeed = rightSign * rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = leftSign * Math.abs(leftEncoder.getDeltaAngularDistance());
 		data.rightWheelDeltaAngularDistance = rightSign * Math.abs(rightEncoder.getDeltaAngularDistance());
-		System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
-		data.irDistance = longIR.getDistance();
-		data.irInRange = shortIR.getValue();
+		//data.irDistance = longIR.getDistance();
+		data.irInRange = closeToWall();
 		data.time = System.currentTimeMillis();
 		
 		// Add data to history
@@ -244,11 +249,14 @@ public class RobotController {
 				* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		// Angle target is absolute.
 		angleCurrent = toAngle(angleCurrent + angleTraveled);
-		System.out.println("angleCurrent: " + angleCurrent);
 		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance) * WHEEL_RADIUS_IN_INCHES / 2.0;
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
+		
+	    System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
+	    System.out.println("angleCurrent: " + angleCurrent);
 		System.out.println("distanceTarget: " + distanceTarget);
+	    System.out.println("closeToWall: " + data.irInRange);
 		
 		updateError();
 		errorHistory.add(error);
