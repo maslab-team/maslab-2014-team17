@@ -49,19 +49,19 @@ public class RobotController {
 	private static final int RIGHT_CYTRON_PWM_PIN = 6;
 	private static final int RIGHT_CYTRON_DIR_PIN = 5;
 
-	private static final int LEFT_ENCODER_PIN_A = 2;
-	private static final int LEFT_ENCODER_PIN_B = 1;
-	private static final int RIGHT_ENCODER_PIN_A = 3;
-	private static final int RIGHT_ENCODER_PIN_B = 4;
+	private static final int LEFT_ENCODER_PIN_A = 3;
+	private static final int LEFT_ENCODER_PIN_B = 4;
+	private static final int RIGHT_ENCODER_PIN_A = 2;
+	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.04;
-	private static final double I_ROT = 0;
-	private static final double D_ROT = 0;
-	private static final double P_TRANS = 0.01;
-	private static final double I_TRANS = 0;
-	private static final double D_TRANS = 0;
-	private static final double MAX_SPEED = 0.25;
+	private static final double P_ROT = 0.02;
+	private static final double I_ROT = 0.00;
+	private static final double D_ROT = 0.0;
+	private static final double P_TRANS = 0.0;
+	private static final double I_TRANS = 0.00;
+	private static final double D_TRANS = 0.0;
+	private static final double MAX_SPEED = 0.20;
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
@@ -91,7 +91,6 @@ public class RobotController {
 	RobotController(String port) {
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
-		//this.gyroscope = new Gyroscope(GYROSCOPE_SPI_PORT, GYROSCOPE_SS_PIN);
 		this.leftEncoder = new Encoder(LEFT_ENCODER_PIN_A, LEFT_ENCODER_PIN_B);
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
 		this.sensorHistory = new SensorDataHistory();
@@ -106,7 +105,6 @@ public class RobotController {
 			this.comm = null;
 		} else {
 			this.comm = new MapleComm(port);
-			setUpComm();
 			setUpShutdownHooks();
 		}
 	}
@@ -117,7 +115,7 @@ public class RobotController {
 	 * @param angleInRadians
 	 */
 	void setCurrentAngle(double angleInRadians) {
-		this.angleCurrent = angleInRadians;
+		this.angleCurrent = toAngle(angleInRadians);
 		updateError();
 	}
 	
@@ -137,18 +135,20 @@ public class RobotController {
 	private void setUpShutdownHooks() {
 		Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 			public void run() {
-				leftWheel.setSpeed(0);
-				rightWheel.setSpeed(0);
-				comm.transmit();
+				if(!NO_COMM) {
+					leftWheel.setSpeed(0);
+					rightWheel.setSpeed(0);
+					comm.transmit();
+				}
 			}
 		}));
 	}
 	
-	private void setUpComm() {
+	void setUpComm() {
 		comm.registerDevice(leftWheel);
 		comm.registerDevice(rightWheel);
-		comm.registerDevice(leftEncoder);
 		comm.registerDevice(rightEncoder);
+		comm.registerDevice(leftEncoder);
 
 		comm.initialize();
 	}
@@ -209,8 +209,11 @@ public class RobotController {
 		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = leftEncoder.getDeltaAngularDistance();
-		data.rightWheelDeltaAngularDistance = rightEncoder.getDeltaAngularDistance();
+		data.rightWheelDeltaAngularDistance = -1.0 * rightEncoder.getDeltaAngularDistance();
 		data.time = System.currentTimeMillis();
+		
+		System.out.println("LEFT: " + data.leftWheelDeltaAngularDistance);
+		System.out.println("RIGHT: " + data.rightWheelDeltaAngularDistance);
 		
 		// Add data to history
 		sensorHistory.add(data);
@@ -224,7 +227,7 @@ public class RobotController {
 		double angleTraveled = (data.rightWheelDeltaAngularDistance - data.leftWheelDeltaAngularDistance)
 				* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		// Angle target is absolute.
-		angleCurrent = angleCurrent - angleTraveled;
+		angleCurrent = toAngle(angleCurrent + angleTraveled);
 		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance)
 				/ 2.0;
 		// Distance target is relative.

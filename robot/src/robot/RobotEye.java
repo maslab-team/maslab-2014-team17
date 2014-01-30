@@ -46,7 +46,7 @@ import org.opencv.imgproc.Imgproc;
 public class RobotEye {
 
 	/** Turn on to enable display. */
-	private static final boolean DISPLAY = false;
+	private static final boolean DISPLAY = true;
 	
 	/** Hough line constants. */
 	private static final double HOUGH_RHO = 1;
