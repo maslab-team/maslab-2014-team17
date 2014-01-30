@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import BotClient.BotClient;
 import robot.RobotEye;
-
 import comm.BotClientMap;
 
 /**
@@ -25,9 +25,29 @@ public class RobotWorld {
 	 * Create a new instance of robot world, initially empty.
 	 */
 	public RobotWorld() {
-		greenBalls = new ArrayList<Ball>();
-		redBalls = new ArrayList<Ball>();
-		map = BotClientMap.getDefaultMap();
+		this.greenBalls = new ArrayList<Ball>();
+		this.redBalls = new ArrayList<Ball>();
+		this.map = BotClientMap.getDefaultMap();
+	}
+	
+	public RobotWorld(BotClient client) {
+		if(client == null) {
+			this.greenBalls = new ArrayList<Ball>();
+			this.redBalls = new ArrayList<Ball>();
+			this.map = BotClientMap.getDefaultMap();
+		} else {
+			this.greenBalls = new ArrayList<Ball>();
+			this.redBalls = new ArrayList<Ball>();
+			this.map = new BotClientMap();
+			String mapString = client.getMap();
+			System.out.println("Received map: " + mapString);
+			if(mapString != null) {
+				this.map.load(client.getMap());
+				System.out.println("Map: " + map);
+			} else {
+				this.map = BotClientMap.getDefaultMap();
+			}
+		}
 	}
 	
 	/**

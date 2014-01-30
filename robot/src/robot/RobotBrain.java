@@ -1,5 +1,6 @@
 package robot;
 
+import BotClient.BotClient;
 import model.RobotWorld;
 import robot.datautils.MotionData;
 
@@ -16,10 +17,12 @@ public class RobotBrain {
 	private static final int SPEAK_DELAY_MILLIS = 5000;
 	private static final boolean DEBUG = true;
 	private static final int SLEEP_TIME_MILLIS = 5;
+	private static final boolean USE_BOTCLIENT = false;
 	
 	private RobotEye eye;
 	private RobotController controller;
 	private RobotWorld world;
+	private BotClient client;
 	
 	/**
 	 * Holds data from the eye.
@@ -87,29 +90,27 @@ public class RobotBrain {
 	 * @param world
 	 * @param startTime
 	 */
-	public RobotBrain(RobotEye eye, RobotController controller, RobotWorld world, long startTime) {
+	public RobotBrain(RobotEye eye, RobotController controller,
+			BotClient client, long startTime) {
 		this.eye = eye;
 		this.controller = controller;
-		this.controller.setCurrentAngle(world.getMap().startPose.theta);
 		//this.controller.setCurrentPosition(world.getMap().startPose.x, world.getMap().startPose.y);
-		this.world = world;
 		//this.positionTarget = new Point(world.getMap().startPose.x, world.getMap().startPose.y);
-		this.angleTarget = world.getMap().startPose.theta;
 		this.distanceTarget = 0;
 		this.startTime = startTime;
 		this.timeMarker = 0;
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
-		this.startLooking();
 		if(SPEAK) {
 			speakTimeMarker = 0;
 			mouth = new RobotMouth();
 			strategy = "I'm getting ready to roomba.";
 		}
-
-		controller.setRelativeTarget(0.5, 0.0);
+		if(USE_BOTCLIENT) {
+			this.client = new BotClient("18.150.7.174:6667","1221",false);
+		}
 	}
-	//findme
+
 	private void startLooking() {
 		eyeThread = new Thread(new Runnable() {
 			public void run() {
@@ -171,7 +172,46 @@ public class RobotBrain {
 	}
 	
 	private void goToRedBalls() {
-		strategy = "Time for dessert - I'm going to find some red balls.";
+		/** Update every 3 seconds. */
+		if(elapsedTime - timeMarker > 7000) {
+
+			RobotWorld.Ball redBall = world.getLargestRedBall();
+			if(redBall != null) {
+				strategy = "I found a red ball! I'm going to go eat it.";
+				angleTarget = pixelToAngle(redBall.getX());
+				distanceTarget = 5;
+				timeMarker = elapsedTime;
+				controller.setRelativeTarget(angleTarget, distanceTarget);
+
+				//TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
+			} else {
+				strategy = "I'm trying to find some delicious red balls to eat.";
+			}
+
+		}
+	}
+	
+	public void setup() {
+		// Wait for arduino to be ready.
+		try {
+			Thread.sleep(2000);
+		} catch(InterruptedException e) {
+			System.err.println(e);
+		}
+		
+		// Wait for botclient.
+		if(USE_BOTCLIENT) {
+			System.out.println("Waiting for game to start...");
+			while(!client.gameStarted());
+			System.out.println("The game has started!");
+		}
+		mouth.speak("The game has started!");
+		
+		this.world = new RobotWorld(client);
+		this.controller.setCurrentAngle(world.getMap().startPose.theta);
+		this.angleTarget = 0;//world.getMap().startPose.theta;
+		this.startLooking();
+		controller.setUpComm();
 	}
 	
 	void loop() {
@@ -180,18 +220,21 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-/*
+		if (elapsedTime < 1000 * 60 * 3) {
+			goToRedBalls();
+		}
+		/*
 		if(elapsedTime < 1000 * 60 * 1) {
 			goToGreenBalls();			
 		} else if (elapsedTime < 1000 * 60 * 2) {
 			depositBalls();
 		} else if (elapsedTime < 1000 * 60 * 3) {
 			goToRedBalls();
-		} else {
+		} */else {
 			stopLooking();
 			strategy = "Game over.  I probably lost.";
 			System.out.println("Game over.");
-		}*/
+		}
 		
 		controller.sendControl();
 		debug();
