@@ -8,6 +8,7 @@ import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
 import comm.MapleComm;
 import devices.actuators.Cytron;
+import devices.sensors.DigitalInput;
 import devices.sensors.Encoder;
 import devices.sensors.Infrared;
 
@@ -55,7 +56,8 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_A = 2;
 	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
-	private static final int IR_PIN = 0;
+	private static final int LONG_IR_PIN = 0;
+	private static final int SHORT_IR_PIN = 1;
 	
 	/** PID Controller paramaters. */
 	private static final double P_ROT = 0.04;
@@ -69,7 +71,8 @@ public class RobotController {
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
-	private Infrared ir;
+	private Infrared longIR;
+	private DigitalInput shortIR;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -224,8 +227,8 @@ public class RobotController {
 		data.leftWheelDeltaAngularDistance = leftSign * Math.abs(leftEncoder.getDeltaAngularDistance());
 		data.rightWheelDeltaAngularDistance = rightSign * Math.abs(rightEncoder.getDeltaAngularDistance());
 		System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
-		//data.irInRange = ir.inRange();
-		data.irInRange = false;
+		data.irDistance = longIR.getDistance();
+		data.irInRange = shortIR.getValue();
 		data.time = System.currentTimeMillis();
 		
 		// Add data to history
