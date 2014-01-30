@@ -15,7 +15,10 @@ public class RobotBrain {
 	
 	private static final boolean SPEAK = false;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
-	private static final boolean DEBUG = false;
+	private static final boolean LOOK = false;
+	private static final int CAMERA_NUMBER = 0;
+	private static final boolean DEBUG = true;
+
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
 	
@@ -90,9 +93,11 @@ public class RobotBrain {
 	 * @param world
 	 * @param startTime
 	 */
-	public RobotBrain(RobotEye eye, RobotController controller,
+	public RobotBrain(RobotController controller,
 			BotClient client, long startTime) {
-		this.eye = eye;
+		if (LOOK) {
+			this.eye = new RobotEye(CAMERA_NUMBER);
+		}
 		this.controller = controller;
 		//this.controller.setCurrentPosition(world.getMap().startPose.x, world.getMap().startPose.y);
 		//this.positionTarget = new Point(world.getMap().startPose.x, world.getMap().startPose.y);
@@ -112,22 +117,24 @@ public class RobotBrain {
 	}
 
 	private void startLooking() {
-		eyeThread = new Thread(new Runnable() {
-			public void run() {
-				while(true) {
-					RobotEye.Data data = eye.process();
-					synchronized(eyeDataLock) {
-						eyeData = data;
-						newEyeData = true;
+		if (LOOK) {
+			eyeThread = new Thread(new Runnable() {
+				public void run() {
+					while(true) {
+						RobotEye.Data data = eye.process();
+						synchronized(eyeDataLock) {
+							eyeData = data;
+							newEyeData = true;
+						}
 					}
 				}
-			}
-		});
-		eyeThread.start();
+			});
+			eyeThread.start();
+		}
 	}
 	
 	private void stopLooking() {
-		eyeThread.interrupt();
+		if(LOOK) { eyeThread.interrupt(); }
 	}
 	
 	private void updateWorld() {
@@ -222,6 +229,7 @@ public class RobotBrain {
         angleTarget = 0;
         distanceTarget = 0;
         controller.setRelativeTarget(angleTarget, distanceTarget);
+
 	}
 	
 	void loop() {

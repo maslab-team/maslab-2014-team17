@@ -13,8 +13,7 @@ public class RobotMain {
 		BotClient client = null;
 
 		RobotController controller = new RobotController(maplePort);
-		RobotEye eye = new RobotEye(cameraNum);
-		RobotBrain brain = new RobotBrain(eye, controller, client, startTime);
+		RobotBrain brain = new RobotBrain(controller, client, startTime);
 		
 		brain.setup();
 		

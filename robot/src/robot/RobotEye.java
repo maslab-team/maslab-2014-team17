@@ -106,11 +106,10 @@ public class RobotEye {
 	 */
 	RobotEye(int n) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-
 		// Setup the camera
 		camera = new VideoCapture();
 		camera.open(n);
-		
+
 		if(DISPLAY) {
 			setUpDisplay();
 		}
