@@ -63,22 +63,22 @@ public class RobotController {
 	private static final int RIGHT_SHORT_IR_PIN = 13;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.03;
-	private static final double I_ROT = 0.00005;
+	private static final double P_ROT = 0.025;
+	private static final double I_ROT = 0.000015;
 	private static final double D_ROT = 1.0;
-	private static final double P_TRANS = 0.025;
-	private static final double I_TRANS = 0.00002;
+	private static final double P_TRANS = 0.02;
+	private static final double I_TRANS = 0.00003;
 	private static final double D_TRANS = 0.5;
-	private static final double MAX_SPEED = 0.2;
-	private static final double MAX_INTEGRAL_ERROR = 2500.0;
+	private static final double MAX_SPEED = 0.3;//changeme
+	private static final double MAX_INTEGRAL_ERROR = 2000.0;
 	
 	private static final double BELT_SPEED = 0.37;
 
 	private static final long WALL_TIME_CONST_MILLIS = 1000;
-	private static final long STUCK_TIME_CONST_MILLIS = 100;
+	private static final long STUCK_TIME_CONST_MILLIS = 600;
 
-	private static final double STUCK_THRESH_ANGULAR_DIST = 0.01;
-	private static final double STUCK_THRESH_WHEEL_CONTROL = 0.05;
+	private static final double STUCK_THRESH_ANGULAR_DIST = 0.002;
+	private static final double STUCK_THRESH_WHEEL_CONTROL = 0.1;//changeme
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel, belt;
@@ -201,6 +201,7 @@ public class RobotController {
 	}
 	
 	void setRelativeTarget(double relAngle, double distance) {
+		System.err.printf("SETTING NEW REL ANGLE TARGET: %.2f\n", relAngle);
 		setTarget(this.angleCurrent + relAngle, distance);
 	}
 	
@@ -258,8 +259,8 @@ public class RobotController {
 		SensorData data = new SensorData();
 		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
-		data.leftWheelDeltaAngularDistance = Math.abs(leftEncoder.getDeltaAngularDistance());
-		data.rightWheelDeltaAngularDistance = Math.abs(rightEncoder.getDeltaAngularDistance());
+		data.leftWheelDeltaAngularDistance = -1.0*leftEncoder.getDeltaAngularDistance();
+		data.rightWheelDeltaAngularDistance = rightEncoder.getDeltaAngularDistance();
 		data.wallOnLeft = wallOnLeft();
 		data.wallOnRight = wallOnRight();
 		data.time = time();
@@ -302,7 +303,7 @@ public class RobotController {
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
 		
-	    //System.out.println("Left wheel traveled:\t" + data.leftWheelDeltaAngularDistance + "\nRight wheel traveled:\t" + data.rightWheelDeltaAngularDistance);
+	    System.out.println("Left wheel traveled:\t" + data.leftWheelDeltaAngularDistance + "\nRight wheel traveled:\t" + data.rightWheelDeltaAngularDistance);
 
 	    updateError();
 		errorHistory.add(error);
@@ -374,14 +375,36 @@ public class RobotController {
 		}
 		
 		// Angular controller:
-		double rotationalControl = P_ROT * angleError
-				+ I_ROT * angleErrorIntegral
-				+ D_ROT * angleErrorDerivative;
+		double rTermMax = 0.7 * MAX_SPEED / HALF_WHEEL_SEPARATION_IN_INCHES;
+		double rP = P_ROT * angleError;
+		double rI = I_ROT * angleErrorIntegral;
+		double rD = D_ROT * angleErrorDerivative;
+		if(Math.abs(rP) > rTermMax) {
+			rP = Math.signum(rP) * rTermMax;
+		}
+		if(Math.abs(rI) > rTermMax) {
+			rI = Math.signum(rI) * rTermMax;
+		}
+		if(Math.abs(rD) > rTermMax) {
+			rD = Math.signum(rD) * rTermMax;
+		}
+		double rotationalControl = rP + rI + rD;
 		
 		// Translational controller (depends on angle error):
-		double translationalControl = (P_TRANS * distanceError
-				+ I_TRANS * distanceErrorIntegral
-				+ D_TRANS * distanceErrorDerivative)
+		double tTermMax = 0.7 * MAX_SPEED;
+		double tP = P_TRANS * distanceError;
+		double tI = I_TRANS * distanceErrorIntegral;
+		double tD = D_TRANS * distanceErrorDerivative;
+		if(Math.abs(tP) > tTermMax) {
+			tP = Math.signum(tP) * tTermMax;
+		}
+		if(Math.abs(tI) > tTermMax) {
+			tI = Math.signum(tI) * tTermMax;
+		}
+		if(Math.abs(tD) > tTermMax) {
+			tD = Math.signum(tD) * tTermMax;
+		}
+		double translationalControl = (tP + tI + tD)
 				* 1.0 / (1.0 + 2 * Math.abs(angleError));
 
 		leftWheelControl = translationalControl - rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
@@ -408,7 +431,7 @@ public class RobotController {
 			System.out.printf("\tP_ROT:\t%.5f\n", P_TRANS);
 			System.out.printf("\tI_ROT:\t%.5f\n", I_TRANS);
 			System.out.printf("\tD_ROT:\t%.5f\n", D_TRANS);
-			System.out.printf("\tangleError:\t%.5f\n", angleError);
+			System.out.printf("\tdistanceError:\t%.5f\n", distanceError);
 			System.out.printf("\tdistanceErrorIntegral:\t%.5f\n", distanceErrorIntegral);
 			System.out.printf("\tdistanceErrorDerivative:\t%.5f\n", distanceErrorDerivative);
 			System.out.printf("\ttranslational control:\t%.5f\n", translationalControl);

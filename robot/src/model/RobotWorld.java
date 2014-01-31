@@ -194,8 +194,12 @@ public class RobotWorld {
 		public int compareTo(Object other) {
 			if (other == null) return -1;
 			if (!(other instanceof Ball)) return -1;
+			Ball otherBall = (Ball)other;
+			double yDiff = this.getY() - otherBall.getY();
+			double xDiff = Math.abs(otherBall.getX() - RobotEye.IMAGE_WIDTH/2)
+					- Math.abs(this.getX() - RobotEye.IMAGE_WIDTH/2);
 			//return this.getRadius() - ((Ball)other).getRadius() > 0 ? -1 : 1;
-			return (this.getY() - ((Ball)other).getY() > 0) ? -1 : 1;
+			return yDiff + 2 * xDiff > 0 ? -1 : 1;
 		}
 	}
 

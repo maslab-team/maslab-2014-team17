@@ -22,8 +22,8 @@ public class RobotBrain {
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
 	
-	private static final int PING_PONG_DELAY_MILLIS = 50;
-	private static final int STUCK_DELAY_MILLIS = 1200;
+	private static final int PING_PONG_DELAY_MILLIS = 100;
+	private static final int STUCK_DELAY_MILLIS = 1500;
 	
 	private RobotEye eye;
 	private RobotController controller;
@@ -78,6 +78,7 @@ public class RobotBrain {
 	private long elapsedTime;
 	
 	private long timeMarker;
+	private long ballTimeMarker;
 
 	/**
 	 * Iterations since game start.
@@ -109,6 +110,7 @@ public class RobotBrain {
 		this.startTime = startTime;
 		this.timeMarker = (long)0;
 		this.stuckTimeMarker = (long)0;
+		this.ballTimeMarker = (long)0;
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
 		if(SPEAK) {
@@ -185,7 +187,7 @@ public class RobotBrain {
 	
 	private void goToRedBalls() {
 		/* Update every 3 seconds. */
-		if(elapsedTime - timeMarker > 3000) {
+		if(elapsedTime - timeMarker > 1500) {
 
 			RobotWorld.Ball redBall = world.getLargestRedBall();
 			if(redBall != null) {
@@ -204,18 +206,22 @@ public class RobotBrain {
 	}
 	
 	private void goToBalls() {
-		RobotWorld.Ball ball = world.getLargestRedBall();//findme
-		if(ball != null) {
-			strategy = "I found a " + ball.getColor() + "  ball! I'm going to go eat it.";
-			angleTarget = pixelToAngle(ball.getX());
-			System.out.printf("Ball at " + ball.getX() + ". Angle: %.2f\n", angleTarget);
-			timeMarker = elapsedTime;
+		if(elapsedTime - ballTimeMarker > 1800) {
+			RobotWorld.Ball ball = world.getLargestRedBall();//findme
+			if(ball != null) {
+				strategy = "I found a " + ball.getColor() + "  ball! I'm going to go eat it.";
+				angleTarget = pixelToAngle(ball.getX());
+				System.out.printf("Ball at " + ball.getX() + ". Angle: %.2f\n", angleTarget);
+				ballTimeMarker = elapsedTime;
+			} else {
+				angleTarget = 0.0;
+				strategy = "I'm trying to find some delicious balls to eat.";
+			}
+			distanceTarget = 12.0;
 			controller.setRelativeTarget(angleTarget, distanceTarget);
-		} else {
-			angleTarget = 0.0;
-			strategy = "I'm trying to find some delicious balls to eat.";
+			System.err.printf("BALL NEW ANGLE TARGET: %.2f\n", angleTarget);
+
 		}
-		distanceTarget = 12.0;
 	}
 	
 	/** Ping pong strategy */
@@ -230,21 +236,23 @@ public class RobotBrain {
 					angleTarget = 0.5 * Math.PI/2.0;
 				}
 				distanceTarget = -5.0;
-
+				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnBothSides()) {
-				angleTarget = -0.1 * Math.PI/2.0;
+				angleTarget = -0.3 * Math.PI/2.0;
 				distanceTarget = -5.0;
 				stuckTimeMarker = elapsedTime;
+				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnLeft()){
 				angleTarget = -0.3 * Math.PI/2.0;
 				distanceTarget = -2.0;
+				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnRight()){
 				angleTarget = 0.3 * Math.PI/2.0;
 				distanceTarget = -2.0;
+				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(!controller.closeToWall()) {
 				goToBalls();
 			}
-			controller.setRelativeTarget(angleTarget, distanceTarget);
 			timeMarker = elapsedTime;
 		}
 	}
@@ -265,7 +273,7 @@ public class RobotBrain {
 		}
 		//mouth.speak("The game has started!");
 		
-		this.world = new RobotWorld(client);
+		this.world = new RobotWorld(null);//client);
 		this.controller.setCurrentAngle(world.getMap().startPose.theta);
 		this.angleTarget = 0;//world.getMap().startPose.theta;
 		this.startLooking();
