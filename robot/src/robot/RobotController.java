@@ -49,31 +49,32 @@ public class RobotController {
 	private static final int LEFT_CYTRON_PWM_PIN = 9;
 	private static final int LEFT_CYTRON_DIR_PIN = 8;
 	private static final int RIGHT_CYTRON_PWM_PIN = 6;
-	private static final int RIGHT_CYTRON_DIR_PIN = 5;
+	private static final int RIGHT_CYTRON_DIR_PIN = 7;
+	private static final int BELT_CYTRON_PWM_PIN = 11;
+	private static final int BELT_CYTRON_DIR_PIN = 10;
 
-	private static final int LEFT_ENCODER_PIN_A = 3;
-	private static final int LEFT_ENCODER_PIN_B = 4;
-	private static final int RIGHT_ENCODER_PIN_A = 2;
-	private static final int RIGHT_ENCODER_PIN_B = 1;
+	private static final int LEFT_ENCODER_PIN_A = 2;
+	private static final int LEFT_ENCODER_PIN_B = 5;
+	private static final int RIGHT_ENCODER_PIN_A = 3;
+	private static final int RIGHT_ENCODER_PIN_B = 4;
 	
-	private static final int LONG_IR_PIN = 0;
-	private static final int SHORT_IR_1_PIN = 13;
-	private static final int SHORT_IR_2_PIN = 13;
+	private static final int LEFT_SHORT_IR_PIN = 12;
+	private static final int RIGHT_SHORT_IR_PIN = 13;
 	
 	/** PID Controller paramaters. */
 	private static final double P_ROT = 0.1;
-	private static final double I_ROT = 0.000005;
+	private static final double I_ROT = 0.00007;
 	private static final double D_ROT = 0.0;
 	private static final double P_TRANS = 0.1;
 	private static final double I_TRANS = 0.00;
 	private static final double D_TRANS = 0.0;
 	private static final double MAX_SPEED = 0.20;
+	private static final double MAX_INTEGRAL_ERROR = 1000.0;
 	
 	private MapleComm comm;
-	private Cytron leftWheel, rightWheel;
+	private Cytron leftWheel, rightWheel, belt;
 	private Encoder leftEncoder, rightEncoder;
-	private Infrared longIR;
-	private DigitalInput shortIR1, shortIR2;
+	private DigitalInput leftShortIR, rightShortIR;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -102,17 +103,17 @@ public class RobotController {
 	RobotController(String port) {
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
+		this.belt = new Cytron(BELT_CYTRON_DIR_PIN, BELT_CYTRON_PWM_PIN);
 		this.leftEncoder = new Encoder(LEFT_ENCODER_PIN_A, LEFT_ENCODER_PIN_B);
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
-		this.longIR = new Infrared(LONG_IR_PIN);
-		this.shortIR1 = new DigitalInput(SHORT_IR_1_PIN);
-		this.shortIR2 = new DigitalInput(SHORT_IR_2_PIN);
+		this.leftShortIR = new DigitalInput(LEFT_SHORT_IR_PIN);
+		this.rightShortIR = new DigitalInput(RIGHT_SHORT_IR_PIN);
 		this.sensorHistory = new SensorDataHistory();
 		this.angleTarget = 0;
 		this.distanceTarget = 0;
 		this.angleCurrent = 0;
 		updateError();
-		this.errorHistory = new BoundedQueue<Error>();
+		this.errorHistory = new BoundedQueue<Error>(30);
 		this.errorHistory.add(this.error);
 		
 		if(NO_COMM) {
@@ -152,6 +153,7 @@ public class RobotController {
 				if(!NO_COMM) {
 					leftWheel.setSpeed(0);
 					rightWheel.setSpeed(0);
+					belt.setSpeed(0);
 					comm.transmit();
 				}
 			}
@@ -161,11 +163,11 @@ public class RobotController {
 	void setUpComm() {
 		comm.registerDevice(leftWheel);
 		comm.registerDevice(rightWheel);
+		comm.registerDevice(belt);
 		comm.registerDevice(rightEncoder);
 		comm.registerDevice(leftEncoder);
-		comm.registerDevice(longIR);
-		comm.registerDevice(shortIR1);
-		comm.registerDevice(shortIR2);
+		comm.registerDevice(leftShortIR);
+		comm.registerDevice(rightShortIR);
 
 		comm.initialize();
 	}
@@ -194,7 +196,14 @@ public class RobotController {
 	
 	public boolean closeToWall() {
 	    //use SensorDataHistory?
-	    return (!shortIR1.getValue() || !shortIR2.getValue());
+	    return (wallOnLeft() || wallOnRight());
+	}
+	
+	public boolean wallOnLeft() {
+		return !leftShortIR.getValue();
+	}
+	public boolean wallOnRight() {
+		return !rightShortIR.getValue();
 	}
 	
 	/**
@@ -228,10 +237,10 @@ public class RobotController {
 		
 		// Retrieve data
 		SensorData data = new SensorData();
-		data.leftWheelAngularSpeed = leftSign * leftEncoder.getAngularSpeed();
-		data.rightWheelAngularSpeed = rightSign * rightEncoder.getAngularSpeed();
-		data.leftWheelDeltaAngularDistance = leftSign * Math.abs(leftEncoder.getDeltaAngularDistance());
-		data.rightWheelDeltaAngularDistance = rightSign * Math.abs(rightEncoder.getDeltaAngularDistance());
+		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
+		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
+		data.leftWheelDeltaAngularDistance = Math.abs(leftEncoder.getDeltaAngularDistance());
+		data.rightWheelDeltaAngularDistance = Math.abs(rightEncoder.getDeltaAngularDistance());
 		//data.irDistance = longIR.getDistance();
 		data.irInRange = closeToWall();
 		data.time = System.currentTimeMillis();
@@ -315,6 +324,18 @@ public class RobotController {
 			No terms added, so derivatives are 0.
 		} */
 		
+		// Cap integral term
+		if(angleErrorIntegral > MAX_INTEGRAL_ERROR) {
+			angleErrorIntegral = MAX_INTEGRAL_ERROR;
+		} else if(angleErrorIntegral < -1.0 * MAX_INTEGRAL_ERROR) {
+			angleErrorIntegral = -1.0 * MAX_INTEGRAL_ERROR;
+		}
+		if(distanceErrorIntegral > MAX_INTEGRAL_ERROR) {
+			distanceErrorIntegral = MAX_INTEGRAL_ERROR;
+		} else if(distanceErrorIntegral < -1.0 * MAX_INTEGRAL_ERROR) {
+			distanceErrorIntegral = -1.0 * MAX_INTEGRAL_ERROR;
+		}
+		
 		// Angular controller:
 		double rotationalControl = P_ROT * angleError
 				+ I_ROT * angleErrorIntegral
@@ -335,7 +356,7 @@ public class RobotController {
 
 		leftWheel.setSpeed(leftWheelControl);
 		rightWheel.setSpeed(rightWheelControl);
-		
+		/*
 		if(leftWheelControl >= 0) {
 		    leftSign = 1;
 		} else {
@@ -345,7 +366,7 @@ public class RobotController {
 		    rightSign = 1;
 		} else {
 		    rightSign = -1;
-		}
+		}*/
 
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");

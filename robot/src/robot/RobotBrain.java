@@ -157,7 +157,7 @@ public class RobotBrain {
 
 	private void goToGreenBalls() {
 		
-		/** Update every 5 seconds. */
+		/* Update every 5 seconds. */
 		if(elapsedTime - timeMarker > 5000) {
 
 			RobotWorld.Ball greenBall = world.getLargestGreenBall();
@@ -179,7 +179,7 @@ public class RobotBrain {
 	}
 	
 	private void goToRedBalls() {
-		/** Update every 3 seconds. */
+		/* Update every 3 seconds. */
 		if(elapsedTime - timeMarker > 3000) {
 
 			RobotWorld.Ball redBall = world.getLargestRedBall();
@@ -198,10 +198,23 @@ public class RobotBrain {
 		}
 	}
 	
-	public void reposition() {
-        angleTarget = Math.PI/2;
-        distanceTarget = 0;
-        controller.setRelativeTarget(angleTarget, distanceTarget);
+	private void pingPong() {
+		/* Run every 5 seconds. */
+		if(elapsedTime - timeMarker > 5000) {
+			/* Ping pong strategy */
+			if(!controller.closeToWall()) {
+				angleTarget = 0.0;
+				distanceTarget = 5.0;
+			} else if (controller.wallOnLeft()){
+				angleTarget = -1.0 * Math.PI/2.0;
+				distanceTarget = 0.0;
+			} else if (controller.wallOnRight()){
+				angleTarget = 1.0 * Math.PI/2.0;
+				distanceTarget = 0.0;
+			}
+			controller.setRelativeTarget(angleTarget, distanceTarget);
+			timeMarker = elapsedTime;
+		}
 	}
 	
 	public void setup() {
@@ -238,28 +251,8 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
-		
-		/** Ping pong strategy */
-		if(!controller.closeToWall()) {
-		    controller.setRelativeTarget(0.0, 5.0);
-	        controller.sendControl();
-		} else {
-		    controller.setRelativeTarget(Math.PI/2, 0.0);	      
-	        controller.sendControl();
-	        try {
-                Thread.sleep(1100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-		}
-		
-//		if (elapsedTime < 1000 * 60 * 3) {
-//		    if (!controller.closeToWall()) {
-//		        goToRedBalls();
-//		    } else {
-//		        reposition();
-//		    }
-//		}
+
+		pingPong();
 		/*
 		if(elapsedTime < 1000 * 60 * 1) {
 			goToGreenBalls();			
@@ -267,12 +260,13 @@ public class RobotBrain {
 			depositBalls();
 		} else if (elapsedTime < 1000 * 60 * 3) {
 			goToRedBalls();
-		} */
-//		else {
-//			stopLooking();
-//			strategy = "Game over.  I probably lost.";
-//			System.out.println("Game over.");
-//		}
+		} else {
+			stopLooking();
+			strategy = "Game over.  I probably lost.";
+			System.out.println("Game over.");
+		}*/
+		
+		controller.sendControl();
 		debug();
 
 		try {
