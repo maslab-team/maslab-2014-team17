@@ -132,13 +132,30 @@ public class RobotWorld {
 		return null;
 	}
 	
+	public Ball getLargestBall() {
+	    if(!redBalls.isEmpty() && !greenBalls.isEmpty()) {
+    	    Ball largestRedBall = redBalls.get(0);
+    	    Ball largestGreenBall = greenBalls.get(0);
+    	    if(largestRedBall.compareTo(largestGreenBall) > 0) {
+    	        return largestRedBall;
+    	    } else {
+    	        return largestGreenBall;
+    	    }
+	    } else if(!redBalls.isEmpty()) {
+	        return redBalls.get(0);
+	    } else if(!greenBalls.isEmpty()) {
+	        return greenBalls.get(0);
+	    } else {
+	        return null;
+	    }
+	}
+	
 	public List<Ball> getRedBalls() {
 		return new ArrayList<Ball>(redBalls);
 	}
 	
 	public List<Ball> getGreenBalls() {
 		return new ArrayList<Ball>(greenBalls);
-
 	}
 	
 	/**

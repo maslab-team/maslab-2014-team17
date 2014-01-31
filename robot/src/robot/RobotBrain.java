@@ -15,8 +15,8 @@ public class RobotBrain {
 	
 	private static final boolean SPEAK = false;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
-	private static final boolean LOOK = false;
-	private static final int CAMERA_NUMBER = 0;
+	private static final boolean LOOK = true;
+	private static final int CAMERA_NUMBER = 1;
 	private static final boolean DEBUG = false;
 
 	private static final int SLEEP_TIME_MILLIS = 5;
@@ -198,13 +198,29 @@ public class RobotBrain {
 		}
 	}
 	
+	private void goToBalls() {
+        RobotWorld.Ball ball = world.getLargestBall();
+        if(ball != null) {
+            System.out.println("ball found");
+            strategy = "I found a ball! I'm going to go eat it.";
+            angleTarget = pixelToAngle(ball.getX());
+            distanceTarget = 8.0;
+            timeMarker = elapsedTime;
+            controller.setRelativeTarget(angleTarget, distanceTarget);
+
+            //TODO: distanceTarget = radiusToDistance(largestBall.getRadius());
+        } else {
+            System.out.println("not found");
+            strategy = "I'm trying to find some delicious red balls to eat.";
+        }
+    }
+	
 	private void pingPong() {
-		/* Run every 1 seconds. */
+		/* Run every. */
 		if(elapsedTime - timeMarker > 300) {
 			/* Ping pong strategy */
 			if(!controller.closeToWall()) {
-				angleTarget = 0.0;
-				distanceTarget = 8.0;
+				goToBalls();
 			} else if(controller.wallOnLeft() && controller.wallOnRight()) {
 				angleTarget = -1.0 * Math.PI/2.0;
 				distanceTarget = -10.0;
@@ -214,6 +230,8 @@ public class RobotBrain {
 			} else if (controller.wallOnRight()){
 				angleTarget = 1.0 * Math.PI/2.0;
 				distanceTarget = 02.0;
+			} else {
+			    System.out.println("pong");
 			}
 			controller.setRelativeTarget(angleTarget, distanceTarget);
 			timeMarker = elapsedTime;
@@ -243,7 +261,7 @@ public class RobotBrain {
 		controller.setUpComm();
 		 
         angleTarget = 0;
-        distanceTarget = 0;
+        distanceTarget = 8.0;
         controller.setRelativeTarget(angleTarget, distanceTarget);
 
 	}

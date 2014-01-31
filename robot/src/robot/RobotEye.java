@@ -46,7 +46,7 @@ import org.opencv.imgproc.Imgproc;
 public class RobotEye {
 
 	/** Turn on to enable display. */
-	private static final boolean DISPLAY = false;
+	private static final boolean DISPLAY = true;
 	
 	/** Hough line constants. */
 	private static final double HOUGH_RHO = 1;
@@ -58,7 +58,7 @@ public class RobotEye {
 	/** Hough circle constants. */
 	private static final double HOUGH_INVERSE_ACCUMULATOR_RES = 1;
 	private static final double HOUGH_MIN_CENTER_DIST = 80;
-	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 12;
+	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 15;
 	private static final int HOUGH_MIN_RADIUS = 10;
 	private static final int HOUGH_MAX_RADIUS = 150;
 	private static final int HOUGH_MAX_NUM_CIRCLES = 6;
@@ -74,18 +74,18 @@ public class RobotEye {
 	private static final int DISPLAY_THICKNESS = 3;
 	
 	/** Color constants. */
-	private static final int RED_BALL_HUE = 240;
-	private static final int RED_BALL_HUE_TOLERANCE = 10;
-	private static final int GREEN_BALL_HUE = 118;
-	private static final int GREEN_BALL_HUE_TOLERANCE = 10;
-	private static final int GREEN_BALL_SATURATION_LOW = 1;
-	private static final int GREEN_BALL_SATURATION_HIGH = 250;
-	private static final int GREEN_BALL_VALUE_LOW = 1;
-	private static final int GREEN_BALL_VALUE_HIGH = 230;
-	private static final int RED_BALL_SATURATION_LOW = 0;
+	private static final int RED_BALL_HUE_LOW = 10;
+	private static final int RED_BALL_HUE_HIGH = 245;
+	private static final int GREEN_BALL_HUE_LOW = 45;
+	private static final int GREEN_BALL_HUE_HIGH = 85;
+	private static final int GREEN_BALL_SATURATION_LOW = 64;
+	private static final int GREEN_BALL_SATURATION_HIGH = 192;
+	private static final int GREEN_BALL_VALUE_LOW = 20;
+	private static final int GREEN_BALL_VALUE_HIGH = 192;
+	private static final int RED_BALL_SATURATION_LOW = 64;
 	private static final int RED_BALL_SATURATION_HIGH = 255;
-	private static final int RED_BALL_VALUE_LOW = 0;
-	private static final int RED_BALL_VALUE_HIGH = 255;
+	private static final int RED_BALL_VALUE_LOW = 20;
+	private static final int RED_BALL_VALUE_HIGH = 245;
 	
 	/** Image source constants. */
 	static final int IMAGE_HEIGHT = 1080; // 1080 for webcam, 720 for macbook
@@ -364,20 +364,27 @@ public class RobotEye {
 		Data data = new Data();
 	    Mat tmpImage = new Mat();
 	    Mat redTmpImage = new Mat();
+	    Mat redTmpImageLow = new Mat();
+	    Mat redTmpImageHigh = new Mat();
 	    Mat greenTmpImage = new Mat();
-	    Mat sourceImage = this.look();
+	    Mat sourceImage = this.blur(this.look());
 	    Imgproc.cvtColor(sourceImage, tmpImage, Imgproc.COLOR_BGR2HSV_FULL);
-	    redTmpImage = this.inRange(tmpImage, new Scalar(RED_BALL_HUE-RED_BALL_HUE_TOLERANCE,
+	    redTmpImageLow = this.inRange(tmpImage, new Scalar(0,
 	    		RED_BALL_SATURATION_LOW, RED_BALL_VALUE_LOW),
-	    		new Scalar(RED_BALL_HUE+RED_BALL_HUE_TOLERANCE,
+	    		new Scalar(RED_BALL_HUE_LOW,
 	    		RED_BALL_SATURATION_HIGH, RED_BALL_VALUE_HIGH));
+	    redTmpImageHigh = this.inRange(tmpImage, new Scalar(RED_BALL_HUE_HIGH,
+                RED_BALL_SATURATION_LOW, RED_BALL_VALUE_LOW),
+                new Scalar(255,
+                RED_BALL_SATURATION_HIGH, RED_BALL_VALUE_HIGH));
+	    Core.bitwise_or(redTmpImageLow, redTmpImageHigh, redTmpImage);
 	    Mat redBlurredGrayImage = this.blur(redTmpImage);
-	    greenTmpImage = this.inRange(tmpImage, new Scalar(GREEN_BALL_HUE-GREEN_BALL_HUE_TOLERANCE,
+	    greenTmpImage = this.inRange(tmpImage, new Scalar(GREEN_BALL_HUE_LOW,
 	    		GREEN_BALL_SATURATION_LOW, GREEN_BALL_VALUE_LOW),
-	    		new Scalar(GREEN_BALL_HUE+GREEN_BALL_HUE_TOLERANCE,
+	    		new Scalar(GREEN_BALL_HUE_HIGH,
 	    		GREEN_BALL_SATURATION_HIGH, GREEN_BALL_VALUE_HIGH));
 	    Mat greenBlurredGrayImage = this.blur(greenTmpImage);
-	    data.addRedCircles(this.detectBalls(redBlurredGrayImage));
+	    data.addRedCircles(this.detectBalls(redTmpImage));
 	    data.addGreenCircles(this.detectBalls(greenBlurredGrayImage));
 	    
 	    if(DISPLAY) {
@@ -429,24 +436,27 @@ public class RobotEye {
 		}
 	}
 	
-	/*
 	public static void main(String[] args) {
+	    
 	    RobotEye eye = new RobotEye(0);
-	    Mat processedImage = new Mat();
-	    Mat canvasImage = new Mat();
-	    Mat tmpImage = new Mat();
-	    Mat sourceImage = eye.look();
-	    Imgproc.cvtColor(sourceImage, tmpImage, Imgproc.COLOR_BGR2HSV_FULL);
-	    int rotation = 128 - 255;
-	    Core.add(tmpImage,  new Scalar(rotation), tmpImage);
-	    tmpImage = eye.inRange(tmpImage, new Scalar(RED_BALL_HUE-RED_BALL_HUE_TOLERANCE, 0, 0),
-	    		new Scalar(RED_BALL_HUE+RED_BALL_HUE_TOLERANCE, 255, 250));
-	    Mat blurredGrayImage = eye.blur(tmpImage);
-	    Mat cannyImage = eye.Canny(sourceImage);
-	    cannyImage.copyTo(canvasImage);
-	    Imgproc.cvtColor(canvasImage, canvasImage, Imgproc.COLOR_GRAY2BGR);
-	    Mat canvasImageWalls = eye.detectWallsForDisplay(cannyImage, canvasImage);
-	    processedImage = eye.detectBallsForDisplay(blurredGrayImage, canvasImageWalls);
+	    Mat im = eye.look();
+	    eye.view(im, "cam");
+	    
+//	    RobotEye eye = new RobotEye(0);
+//	    Mat processedImage = new Mat();
+//	    Mat canvasImage = new Mat();
+//	    Mat tmpImage = new Mat();
+//	    Mat sourceImage = eye.look();
+//	    Imgproc.cvtColor(sourceImage, tmpImage, Imgproc.COLOR_BGR2HSV_FULL);
+//	    int rotation = 128 - 255;
+//	    Core.add(tmpImage,  new Scalar(rotation), tmpImage);
+//	    tmpImage = eye.inRange(tmpImage, new Scalar(RED_BALL_HUE-RED_BALL_HUE_TOLERANCE, 0, 0),
+//	    		new Scalar(RED_BALL_HUE+RED_BALL_HUE_TOLERANCE, 255, 250));
+//	    Mat blurredGrayImage = eye.blur(tmpImage);
+//	    Mat cannyImage = eye.Canny(sourceImage);
+//	    cannyImage.copyTo(canvasImage);
+//	    Imgproc.cvtColor(canvasImage, canvasImage, Imgproc.COLOR_GRAY2BGR);
+//	    Mat canvasImageWalls = eye.detectWallsForDisplay(cannyImage, canvasImage);
 	    
 	    
 	    /*
@@ -471,6 +481,7 @@ public class RobotEye {
 	    eye.view(tmpImage);
 	    eye.view(blurredGrayImage);
 	    eye.view(processedImage);
-	}*/
+	    */
+	}
 
 }

@@ -6,7 +6,6 @@ import model.RobotWorld;
 public class RobotMain {
 	
 	private static final String maplePort = "/dev/tty.usbmodemfa131";
-	private static final int cameraNum = 0;
 	
 	public static void main(String[] args) {
 		long startTime = System.currentTimeMillis();
