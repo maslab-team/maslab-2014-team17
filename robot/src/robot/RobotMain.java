@@ -1,7 +1,6 @@
 package robot;
 
 import BotClient.BotClient;
-import model.RobotWorld;
 
 public class RobotMain {
 	

@@ -3,9 +3,7 @@ package robot;
 import java.util.Iterator;
 
 import robot.datautils.BoundedQueue;
-import robot.datautils.MotionData;
 import robot.datautils.SensorData;
-import robot.datautils.SensorDataHistory;
 
 import comm.MapleComm;
 
@@ -63,30 +61,28 @@ public class RobotController {
 	private static final int RIGHT_SHORT_IR_PIN = 13;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.025;
-	private static final double I_ROT = 0.000015;
+	private static final double P_ROT = 0.017;
+	private static final double I_ROT = 0.00001;
 	private static final double D_ROT = 1.0;
-	private static final double P_TRANS = 0.02;
+	private static final double P_TRANS = 0.03;
 	private static final double I_TRANS = 0.00003;
 	private static final double D_TRANS = 0.5;
-	private static final double MAX_SPEED = 0.3;//changeme
+	private static final double MAX_SPEED = 0.20;//changeme
 	private static final double MAX_INTEGRAL_ERROR = 2000.0;
 	
-	private static final double BELT_SPEED = 0.37;
+	private static final double BELT_SPEED = 0.39;
 
 	private static final long WALL_TIME_CONST_MILLIS = 1000;
 	private static final long STUCK_TIME_CONST_MILLIS = 600;
 
 	private static final double STUCK_THRESH_ANGULAR_DIST = 0.002;
-	private static final double STUCK_THRESH_WHEEL_CONTROL = 0.1;//changeme
+	private static final double STUCK_THRESH_WHEEL_CONTROL = 0.08;
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel, belt;
 	private Encoder leftEncoder, rightEncoder;
 	private DigitalInput leftShortIR, rightShortIR;
 	
-	private SensorDataHistory sensorHistory;
-	private MotionData motionData;
 	private BoundedQueue<Error> errorHistory;
 	
 	/**
@@ -123,7 +119,6 @@ public class RobotController {
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
 		this.leftShortIR = new DigitalInput(LEFT_SHORT_IR_PIN);
 		this.rightShortIR = new DigitalInput(RIGHT_SHORT_IR_PIN);
-		this.sensorHistory = new SensorDataHistory();
 		this.angleTarget = 0;
 		this.distanceTarget = 0;
 		this.angleCurrent = 0;
@@ -243,13 +238,19 @@ public class RobotController {
 		return stuckTime != 0 && (time() - stuckTime > STUCK_TIME_CONST_MILLIS);
 	}
 	
+	public double getAngleError() {
+		return error.angleError;
+	}
+	
+	public double getDistanceError() {
+		return error.distanceError;
+	}
+	
 	/**
-	 * Returns a useful summary of recent sensor data.  Adds the current
-	 * sensor data to sensorHistory, stores a weighted average with
-	 * acceleration in motionData, updates error fields, and updates
+	 * Updates error fields, infrared, and
 	 * current angle and position.
 	 */
-	MotionData getMotionData() {
+	void updateMotionData() {
 		// Update data
 		if(!NO_COMM) {
 			comm.updateSensorData();
@@ -263,13 +264,7 @@ public class RobotController {
 		data.rightWheelDeltaAngularDistance = rightEncoder.getDeltaAngularDistance();
 		data.wallOnLeft = wallOnLeft();
 		data.wallOnRight = wallOnRight();
-		data.time = time();
-		
-		// Add data to history
-		sensorHistory.add(data);
-		
-		// Store new averages.
-		motionData = sensorHistory.getMotionData();
+		data.time = time();		
 		
 		// Store IR wall detection times.
 		if(data.wallOnLeft) {
@@ -284,10 +279,8 @@ public class RobotController {
 			||  (Math.abs(data.rightWheelDeltaAngularDistance) < STUCK_THRESH_ANGULAR_DIST
 				&& Math.abs(rightWheelControl) > STUCK_THRESH_WHEEL_CONTROL)) {
 			if(0 == stuckTime) /* Getting stuck this iteration. */ {
-				System.err.println("\nGETTING STUCK\n");
 				stuckTime = time();
 			}
-			System.err.println("\nSTUCK\n");
 		} else /* Not stuck */ { 
 			stuckTime = 0;
 		}
@@ -311,7 +304,7 @@ public class RobotController {
 		debug();
 		
 		// Return copy to prevent unexpected modification.
-		return new MotionData(motionData);
+		//return new MotionData(motionData);
 	}
 	
 	

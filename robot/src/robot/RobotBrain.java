@@ -1,8 +1,7 @@
 package robot;
 
-import BotClient.BotClient;
 import model.RobotWorld;
-import robot.datautils.MotionData;
+import BotClient.BotClient;
 
 /**
  * Contains method necessary for processing inputs
@@ -13,17 +12,18 @@ import robot.datautils.MotionData;
  */
 public class RobotBrain {
 	
-	private static final boolean SPEAK = false;
+	private static final boolean SPEAK = true;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
 	private static final boolean LOOK = true;
 	private static final int CAMERA_NUMBER = 0;
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
 	
 	private static final int PING_PONG_DELAY_MILLIS = 100;
 	private static final int STUCK_DELAY_MILLIS = 1500;
+	private static final int BOT_CLIENT_DELAY_MILLIS = 377;
 	
 	private RobotEye eye;
 	private RobotController controller;
@@ -52,6 +52,7 @@ public class RobotBrain {
 	
 	private long speakTimeMarker;
 	private long stuckTimeMarker;
+	private long botClientTimeMarker;
 	
 	/*/** Represents position target in xy-plane.
 	private Point positionTarget;*/
@@ -111,6 +112,7 @@ public class RobotBrain {
 		this.timeMarker = (long)0;
 		this.stuckTimeMarker = (long)0;
 		this.ballTimeMarker = (long)0;
+		this.botClientTimeMarker = (long)0;
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
 		if(SPEAK) {
@@ -161,6 +163,13 @@ public class RobotBrain {
 			speakTimeMarker = elapsedTime;
 		}
 	}
+	
+	private void sendStrategy() {
+		if(USE_BOTCLIENT && elapsedTime - botClientTimeMarker > BOT_CLIENT_DELAY_MILLIS) {
+			client.sendRaw(strategy);
+			botClientTimeMarker = elapsedTime;
+		}
+	}
 
 	private void goToGreenBalls() {
 		
@@ -206,11 +215,12 @@ public class RobotBrain {
 	}
 	
 	private void goToBalls() {
-		if(elapsedTime - ballTimeMarker > 1800) {
-			RobotWorld.Ball ball = world.getLargestRedBall();//findme
+		if(elapsedTime - ballTimeMarker > 800) {
+			RobotWorld.Ball ball = world.getLargestBall();//findme
 			if(ball != null) {
 				strategy = "I found a " + ball.getColor() + "  ball! I'm going to go eat it.";
-				angleTarget = pixelToAngle(ball.getX());
+				//angleTarget = pixelToAngle(ball.getX());
+				angleTarget = controller.getAngleError()/3.0 + 2.0*pixelToAngle(ball.getX())/3.0;
 				System.out.printf("Ball at " + ball.getX() + ". Angle: %.2f\n", angleTarget);
 				ballTimeMarker = elapsedTime;
 			} else {
@@ -219,8 +229,6 @@ public class RobotBrain {
 			}
 			distanceTarget = 12.0;
 			controller.setRelativeTarget(angleTarget, distanceTarget);
-			System.err.printf("BALL NEW ANGLE TARGET: %.2f\n", angleTarget);
-
 		}
 	}
 	
@@ -229,6 +237,7 @@ public class RobotBrain {
 		if(elapsedTime - timeMarker > PING_PONG_DELAY_MILLIS
 				&& elapsedTime - stuckTimeMarker > STUCK_DELAY_MILLIS) {
 			if(controller.stuck()) {
+				strategy = "I'm stuck.";
 				stuckTimeMarker = elapsedTime;
 				if(angleTarget > 0.0) {
 					angleTarget = -0.5 * Math.PI/2.0;
@@ -238,15 +247,18 @@ public class RobotBrain {
 				distanceTarget = -5.0;
 				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnBothSides()) {
+				strategy = "I'm in a corner.";
 				angleTarget = -0.3 * Math.PI/2.0;
 				distanceTarget = -5.0;
 				stuckTimeMarker = elapsedTime;
 				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnLeft()){
+				strategy = "There's a wall to the left.";
 				angleTarget = -0.3 * Math.PI/2.0;
 				distanceTarget = -2.0;
 				controller.setRelativeTarget(angleTarget, distanceTarget);
 			} else if(controller.wallOnRight()){
+				strategy = "There's a wall to the right.";
 				angleTarget = 0.3 * Math.PI/2.0;
 				distanceTarget = -2.0;
 				controller.setRelativeTarget(angleTarget, distanceTarget);
@@ -267,7 +279,7 @@ public class RobotBrain {
 		
 		// Wait for botclient.
 		if(USE_BOTCLIENT) {
-			System.out.println("Waiting for game to start...");
+			System.out.println("Waiting for the game to start...");
 			while(!client.gameStarted());
 			System.out.println("The game has started!");
 		}
@@ -290,27 +302,17 @@ public class RobotBrain {
 		++counter;
 		updateWorld();
 		speak();
-		MotionData mData = controller.getMotionData();
+		sendStrategy();
+		controller.updateMotionData();
+		
 		if((USE_BOTCLIENT && !client.gameStarted()) || elapsedTime > (1000 * 60 * 3) + 1000) {
 			System.out.println("Game over!");
-			strategy = "Game over.";
+			strategy = "Game over!";
 			speak();
 			stopLooking();
 		}
 
 		pingPong();
-		/*
-		if(elapsedTime < 1000 * 60 * 1) {
-			goToGreenBalls();			
-		} else if (elapsedTime < 1000 * 60 * 2) {
-			depositBalls();
-		} else if (elapsedTime < 1000 * 60 * 3) {
-			goToRedBalls();
-		} else {
-			stopLooking();
-			strategy = "Game over.  I probably lost.";
-			System.out.println("Game over.");
-		}*/
 		
 		controller.sendControl();
 		debug();
@@ -345,9 +347,9 @@ public class RobotBrain {
 			System.out.printf("ROBOT INFO\n");
 			System.out.printf("\tTime:\t%d\n", elapsedTime);
 			System.out.printf("\tCounter:\t%d\n", counter);
-			//System.out.printf("\tPosition Target:\t" + positionTarget + "\n");
 			System.out.printf("\tDistance Target:\t%.2f\n", distanceTarget);
 			System.out.printf("\tAngle Target:\t%.2f\n", angleTarget);
+			System.err.println("Strategy:\t" + strategy);
 		}
 	}
 	

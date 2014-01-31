@@ -58,7 +58,7 @@ public class RobotEye {
 	/** Hough circle constants. */
 	private static final double HOUGH_INVERSE_ACCUMULATOR_RES = 1;
 	private static final double HOUGH_MIN_CENTER_DIST = 80;
-	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 15;
+	private static final double HOUGH_CIRCLE_DETECTION_THRESH = 11;
 	private static final int HOUGH_MIN_RADIUS = 10;
 	private static final int HOUGH_MAX_RADIUS = 150;
 	private static final int HOUGH_MAX_NUM_CIRCLES = 6;
@@ -71,26 +71,26 @@ public class RobotEye {
 	private static final int BLUR_KERNEL_SIZE = 13;
 	
 	/** Display constants. */
-	private static final int DISPLAY_THICKNESS = 3;
+	private static final int DISPLAY_THICKNESS = 9;
 	
 	/** Color constants. */
 	private static final int RED_BALL_HUE_LOW = 10;
 	private static final int RED_BALL_HUE_HIGH = 245;
-	private static final int GREEN_BALL_HUE_LOW = 45;
-	private static final int GREEN_BALL_HUE_HIGH = 85;
-	private static final int GREEN_BALL_SATURATION_LOW = 64;
-	private static final int GREEN_BALL_SATURATION_HIGH = 192;
-	private static final int GREEN_BALL_VALUE_LOW = 20;
-	private static final int GREEN_BALL_VALUE_HIGH = 192;
 	private static final int RED_BALL_SATURATION_LOW = 64;
-	private static final int RED_BALL_SATURATION_HIGH = 255;
+	private static final int RED_BALL_SATURATION_HIGH = 250;
 	private static final int RED_BALL_VALUE_LOW = 20;
 	private static final int RED_BALL_VALUE_HIGH = 245;
+	private static final int GREEN_BALL_HUE_LOW = 86;
+	private static final int GREEN_BALL_HUE_HIGH = 127;
+	private static final int GREEN_BALL_SATURATION_LOW = 64;
+	private static final int GREEN_BALL_SATURATION_HIGH = 250;
+	private static final int GREEN_BALL_VALUE_LOW = 20;
+	private static final int GREEN_BALL_VALUE_HIGH = 240;
 	
 	/** Image source constants. */
 	static final int IMAGE_HEIGHT = 1080; // 1080 for webcam, 720 for macbook
 	public static final int IMAGE_WIDTH = 1920; // 1920 for webcam, 1280 for macbook
-	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 60.0 * Math.PI / 180.0;
+	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 70.0 * Math.PI / 180.0;
 	static final double IMAGE_DEPTH_IN_PIXELS =
 			IMAGE_WIDTH/(2.0*Math.tan(IMAGE_HORIZONTAL_ANGLE_OF_VIEW/2.0));
 	
@@ -384,7 +384,7 @@ public class RobotEye {
 	    		new Scalar(GREEN_BALL_HUE_HIGH,
 	    		GREEN_BALL_SATURATION_HIGH, GREEN_BALL_VALUE_HIGH));
 	    Mat greenBlurredGrayImage = this.blur(greenTmpImage);
-	    data.addRedCircles(this.detectBalls(redTmpImage));
+	    data.addRedCircles(this.detectBalls(redBlurredGrayImage));
 	    data.addGreenCircles(this.detectBalls(greenBlurredGrayImage));
 	    
 	    if(DISPLAY) {
