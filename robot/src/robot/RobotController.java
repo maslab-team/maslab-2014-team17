@@ -34,7 +34,7 @@ import devices.sensors.Encoder;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = false;
+	private static final boolean NO_COMM = true;
 	
 	private static final boolean DEBUG = true;
 	
@@ -179,15 +179,17 @@ public class RobotController {
 	}
 	
 	void setUpComm() {
-		comm.registerDevice(leftWheel);
-		comm.registerDevice(rightWheel);
-		comm.registerDevice(belt);
-		comm.registerDevice(rightEncoder);
-		comm.registerDevice(leftEncoder);
-		comm.registerDevice(leftShortIR);
-		comm.registerDevice(rightShortIR);
-
-		comm.initialize();
+	    if(!NO_COMM) {
+    		comm.registerDevice(leftWheel);
+    		comm.registerDevice(rightWheel);
+    		comm.registerDevice(belt);
+    		comm.registerDevice(rightEncoder);
+    		comm.registerDevice(leftEncoder);
+    		comm.registerDevice(leftShortIR);
+    		comm.registerDevice(rightShortIR);
+    
+    		comm.initialize();
+	    }
 	}
 	
 	void setTarget(double angle, double distance) {
@@ -300,7 +302,7 @@ public class RobotController {
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
 		
-	    System.out.println("Left wheel traveled:\t" + data.leftWheelDeltaAngularDistance + "\nRight wheel traveled:\t" + data.rightWheelDeltaAngularDistance);
+	    //System.out.println("Left wheel traveled:\t" + data.leftWheelDeltaAngularDistance + "\nRight wheel traveled:\t" + data.rightWheelDeltaAngularDistance);
 
 	    updateError();
 		errorHistory.add(error);

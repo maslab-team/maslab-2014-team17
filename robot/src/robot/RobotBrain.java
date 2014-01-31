@@ -15,7 +15,7 @@ public class RobotBrain {
 	
 	private static final boolean SPEAK = false;
 	private static final int SPEAK_DELAY_MILLIS = 5000;
-	private static final boolean LOOK = false;
+	private static final boolean LOOK = true;
 	private static final int CAMERA_NUMBER = 0;
 	private static final boolean DEBUG = false;
 
@@ -223,7 +223,6 @@ public class RobotBrain {
 				&& elapsedTime - stuckTimeMarker > STUCK_DELAY_MILLIS) {
 			if(controller.stuck()) {
 				System.err.println("\nI KNOW I'M STUCK\n");
-				//System.exit(0);
 				stuckTimeMarker = elapsedTime;
 				if(angleTarget > 0.0) {
 					angleTarget = -0.5 * Math.PI/2.0;
@@ -245,7 +244,7 @@ public class RobotBrain {
 				distanceTarget = -2.0;
 			} else if(!controller.closeToWall()) {
 				goToBalls();
-			} 
+			}
 			controller.setRelativeTarget(angleTarget, distanceTarget);
 			timeMarker = elapsedTime;
 		}
@@ -274,7 +273,7 @@ public class RobotBrain {
 		controller.setUpComm();
 		 
         angleTarget = 0;
-        distanceTarget = 0;
+        distanceTarget = 8.0;
         controller.setRelativeTarget(angleTarget, distanceTarget);
 
 	}

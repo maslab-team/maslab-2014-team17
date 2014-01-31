@@ -149,7 +149,6 @@ public class RobotWorld {
 	
 	public List<Ball> getGreenBalls() {
 		return new ArrayList<Ball>(greenBalls);
-
 	}
 	
 	/**
