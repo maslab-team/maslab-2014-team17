@@ -8,7 +8,9 @@ import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
 import comm.MapleComm;
 import devices.actuators.Cytron;
+import devices.sensors.DigitalInput;
 import devices.sensors.Encoder;
+import devices.sensors.Infrared;
 
 /**
  * Contains methods necessary to control the robot and to
@@ -33,7 +35,7 @@ public class RobotController {
 	/** Set true to disable communication with the Maple. */
 	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = true;
+	private static final boolean DEBUG = false;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 12.0;
@@ -54,11 +56,15 @@ public class RobotController {
 	private static final int RIGHT_ENCODER_PIN_A = 2;
 	private static final int RIGHT_ENCODER_PIN_B = 1;
 	
+	private static final int LONG_IR_PIN = 0;
+	private static final int SHORT_IR_1_PIN = 13;
+	private static final int SHORT_IR_2_PIN = 13;
+	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.04;
+	private static final double P_ROT = 0.1;
 	private static final double I_ROT = 0.000005;
 	private static final double D_ROT = 0.0;
-	private static final double P_TRANS = 0.0;
+	private static final double P_TRANS = 0.1;
 	private static final double I_TRANS = 0.00;
 	private static final double D_TRANS = 0.0;
 	private static final double MAX_SPEED = 0.20;
@@ -66,6 +72,8 @@ public class RobotController {
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel;
 	private Encoder leftEncoder, rightEncoder;
+	private Infrared longIR;
+	private DigitalInput shortIR1, shortIR2;
 	
 	private SensorDataHistory sensorHistory;
 	private MotionData motionData;
@@ -88,11 +96,17 @@ public class RobotController {
 	private double angleCurrent;
 	// private double positionCurrent;
 	
+	private int leftSign;
+	private int rightSign;
+	
 	RobotController(String port) {
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
 		this.rightWheel = new Cytron(RIGHT_CYTRON_DIR_PIN, RIGHT_CYTRON_PWM_PIN);
 		this.leftEncoder = new Encoder(LEFT_ENCODER_PIN_A, LEFT_ENCODER_PIN_B);
 		this.rightEncoder = new Encoder(RIGHT_ENCODER_PIN_A, RIGHT_ENCODER_PIN_B);
+		this.longIR = new Infrared(LONG_IR_PIN);
+		this.shortIR1 = new DigitalInput(SHORT_IR_1_PIN);
+		this.shortIR2 = new DigitalInput(SHORT_IR_2_PIN);
 		this.sensorHistory = new SensorDataHistory();
 		this.angleTarget = 0;
 		this.distanceTarget = 0;
@@ -149,6 +163,9 @@ public class RobotController {
 		comm.registerDevice(rightWheel);
 		comm.registerDevice(rightEncoder);
 		comm.registerDevice(leftEncoder);
+		comm.registerDevice(longIR);
+		comm.registerDevice(shortIR1);
+		comm.registerDevice(shortIR2);
 
 		comm.initialize();
 	}
@@ -173,6 +190,11 @@ public class RobotController {
 			retAngle -= 2 * Math.PI;
 		}
 		return retAngle;
+	}
+	
+	public boolean closeToWall() {
+	    //use SensorDataHistory?
+	    return (!shortIR1.getValue() || !shortIR2.getValue());
 	}
 	
 	/**
@@ -206,14 +228,13 @@ public class RobotController {
 		
 		// Retrieve data
 		SensorData data = new SensorData();
-		data.leftWheelAngularSpeed = leftEncoder.getAngularSpeed();
-		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
-		data.leftWheelDeltaAngularDistance = leftEncoder.getDeltaAngularDistance();
-		data.rightWheelDeltaAngularDistance = -1.0 * rightEncoder.getDeltaAngularDistance();
+		data.leftWheelAngularSpeed = leftSign * leftEncoder.getAngularSpeed();
+		data.rightWheelAngularSpeed = rightSign * rightEncoder.getAngularSpeed();
+		data.leftWheelDeltaAngularDistance = leftSign * Math.abs(leftEncoder.getDeltaAngularDistance());
+		data.rightWheelDeltaAngularDistance = rightSign * Math.abs(rightEncoder.getDeltaAngularDistance());
+		//data.irDistance = longIR.getDistance();
+		data.irInRange = closeToWall();
 		data.time = System.currentTimeMillis();
-		
-		System.out.println("LEFT: " + data.leftWheelDeltaAngularDistance);
-		System.out.println("RIGHT: " + data.rightWheelDeltaAngularDistance);
 		
 		// Add data to history
 		sensorHistory.add(data);
@@ -228,10 +249,14 @@ public class RobotController {
 				* WHEEL_RADIUS_IN_INCHES / (2.0 * HALF_WHEEL_SEPARATION_IN_INCHES);
 		// Angle target is absolute.
 		angleCurrent = toAngle(angleCurrent + angleTraveled);
-		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance)
-				/ 2.0;
+		double distanceTraveled = (data.rightWheelDeltaAngularDistance + data.leftWheelDeltaAngularDistance) * WHEEL_RADIUS_IN_INCHES / 2.0;
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
+		
+	    System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
+	    System.out.println("angleCurrent: " + angleCurrent);
+		System.out.println("distanceTarget: " + distanceTarget);
+	    System.out.println("closeToWall: " + data.irInRange);
 		
 		updateError();
 		errorHistory.add(error);
@@ -310,6 +335,17 @@ public class RobotController {
 
 		leftWheel.setSpeed(leftWheelControl);
 		rightWheel.setSpeed(rightWheelControl);
+		
+		if(leftWheelControl >= 0) {
+		    leftSign = 1;
+		} else {
+		    leftSign = -1;
+		}
+		if(rightWheelControl >= 0) {
+		    rightSign = 1;
+		} else {
+		    rightSign = -1;
+		}
 
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");
@@ -358,6 +394,10 @@ public class RobotController {
 			this.angleError = angleError;
 			this.distanceError = distanceError;
 			this.time = System.currentTimeMillis();
+		}
+		
+		public String toString() {
+		    return "Angle error: " + angleError + "\n" + "Distance error: " + distanceError;
 		}
 	}
 }

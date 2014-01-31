@@ -2,24 +2,35 @@ package robot;
 
 import comm.*;
 import devices.actuators.Cytron;
+import devices.actuators.PWMOutput;
+import devices.sensors.Encoder;
 import devices.sensors.Gyroscope;
+import devices.sensors.Infrared;
 
 public class Driver {
     private MapleComm comm;
     private Cytron leftWheel, rightWheel;
-    private Gyroscope gyro;
+    private Encoder leftEncoder, rightEncoder;
+    private Infrared ir;
+    private PWMOutput servo;
     
     public Driver() {
         comm = new MapleComm(MapleIO.SerialPortType.LINUX);
-        leftWheel = new Cytron(2, 1);
-        rightWheel = new Cytron(7, 6);
-        gyro = new Gyroscope(1, 9);
+        leftWheel = new Cytron(8, 9);
+        rightWheel = new Cytron(5, 6);
+        ir = new Infrared(0);
+        servo = new PWMOutput(10);
+        leftEncoder = new Encoder(3, 4);
+        rightEncoder = new Encoder(2, 1);
     }
     
     void setup() {
         comm.registerDevice(leftWheel);
         comm.registerDevice(rightWheel);
-        comm.registerDevice(gyro);
+        comm.registerDevice(leftEncoder);
+        comm.registerDevice(rightEncoder);
+        comm.registerDevice(ir);
+        comm.registerDevice(servo);
         comm.initialize();
     }
     
@@ -29,28 +40,36 @@ public class Driver {
         comm.transmit();
     }
     
-    void updateReading() {
+    void turn(double angle) {
+        servo.setValue(angle);
+    }
+    
+    float getDistance() {
         comm.updateSensorData();
-        //System.out.println("omega: " + gyro.getOmega());
-        System.out.println("theta: " + gyro.getTheta());
+        return ir.getDistance();
     }
     
-    void rotateToAngle(double theta) throws InterruptedException {
-        double currentAngle = gyro.getTheta();
-        while(Math.abs(currentAngle - theta) > 0.1) {
-            drive(-.03*(currentAngle - theta), .03*(currentAngle - theta));
-            this.updateReading();
-            currentAngle = gyro.getTheta();
-            Thread.sleep(100);
-        }
+    void getEncoderData() {
+        System.out.println("left: " + leftEncoder.getAngularSpeed());
+        System.out.println("right: " + rightEncoder.getAngularSpeed());
     }
-    
     
     public static void main(String[] args) throws InterruptedException {
         Driver driver = new Driver();
         driver.setup();
-        //driver.drive(0, 0);
-        driver.rotateToAngle(1);
-        
+        driver.drive(.2, -.2);
+        driver.turn(.3);
+        for(int i = 0; i < 10; i++) {
+            float count = 0;
+            for(int j = 0; j < 10; j++) {
+                count += driver.getDistance();
+            }
+            count = count/10;
+            System.out.println("ir: " + count);
+            Thread.sleep(100);
+            driver.getEncoderData();
+        }
+        driver.turn(-.3);
+        driver.drive(0, 0);
     }
 }
