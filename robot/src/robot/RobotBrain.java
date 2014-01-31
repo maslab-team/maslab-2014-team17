@@ -22,6 +22,9 @@ public class RobotBrain {
 	private static final int SLEEP_TIME_MILLIS = 5;
 	private static final boolean USE_BOTCLIENT = false;
 	
+	private static final int PING_PONG_DELAY_MILLIS = 50;
+	private static final int STUCK_DELAY_MILLIS = 1200;
+	
 	private RobotEye eye;
 	private RobotController controller;
 	private RobotWorld world;
@@ -48,6 +51,7 @@ public class RobotBrain {
 	private String strategy;
 	
 	private long speakTimeMarker;
+	private long stuckTimeMarker;
 	
 	/*/** Represents position target in xy-plane.
 	private Point positionTarget;*/
@@ -103,11 +107,12 @@ public class RobotBrain {
 		//this.positionTarget = new Point(world.getMap().startPose.x, world.getMap().startPose.y);
 		this.distanceTarget = 0;
 		this.startTime = startTime;
-		this.timeMarker = 0;
+		this.timeMarker = (long)0;
+		this.stuckTimeMarker = (long)0;
 		this.counter = 0;
 		this.eyeData = new RobotEye.Data();
 		if(SPEAK) {
-			speakTimeMarker = 0;
+			speakTimeMarker = (long)0;
 			mouth = new RobotMouth();
 			strategy = "I'm getting ready to roomba.";
 		}
@@ -198,23 +203,49 @@ public class RobotBrain {
 		}
 	}
 	
+	private void goToBalls() {
+		RobotWorld.Ball ball = world.getLargestBall();
+		if(ball != null) {
+			strategy = "I found a " + ball.getColor() + "  ball! I'm going to go eat it.";
+			angleTarget = pixelToAngle(ball.getX());
+			timeMarker = elapsedTime;
+			controller.setRelativeTarget(angleTarget, distanceTarget);
+		} else {
+			angleTarget = 0.0;
+			strategy = "I'm trying to find some delicious balls to eat.";
+		}
+		distanceTarget = 12.0;
+	}
+	
+	/** Ping pong strategy */
 	private void pingPong() {
-		/* Run every 1 seconds. */
-		if(elapsedTime - timeMarker > 300) {
-			/* Ping pong strategy */
-			if(!controller.closeToWall()) {
-				angleTarget = 0.0;
-				distanceTarget = 8.0;
-			} else if(controller.wallOnLeft() && controller.wallOnRight()) {
-				angleTarget = -1.0 * Math.PI/2.0;
-				distanceTarget = -10.0;
-			} else if (controller.wallOnLeft()){
-				angleTarget = -1.0 * Math.PI/2.0;
+		if(elapsedTime - timeMarker > PING_PONG_DELAY_MILLIS
+				&& elapsedTime - stuckTimeMarker > STUCK_DELAY_MILLIS) {
+			if(controller.stuck()) {
+				System.err.println("\nI KNOW I'M STUCK\n");
+				//System.exit(0);
+				stuckTimeMarker = elapsedTime;
+				if(angleTarget > 0.0) {
+					angleTarget = -0.5 * Math.PI/2.0;
+				} else {
+					angleTarget = 0.5 * Math.PI/2.0;
+				}
+				distanceTarget = -5.0;
+
+			} else if(controller.wallOnBothSides()) {
+				angleTarget = 0;
+				angleTarget = -0.1 * Math.PI/2.0;
+				distanceTarget = -5.0;
+				stuckTimeMarker = elapsedTime;
+			} else if(controller.wallOnLeft()){
+				angleTarget = -0.3 * Math.PI/2.0;
 				distanceTarget = -2.0;
-			} else if (controller.wallOnRight()){
-				angleTarget = 1.0 * Math.PI/2.0;
-				distanceTarget = 02.0;
-			}
+			} else if(controller.wallOnRight()){
+				angleTarget = 0.3 * Math.PI/2.0;
+				distanceTarget = -2.0;
+			} else if(!controller.closeToWall()) {
+				goToBalls();
+			} 
 			controller.setRelativeTarget(angleTarget, distanceTarget);
 			timeMarker = elapsedTime;
 		}
@@ -249,7 +280,7 @@ public class RobotBrain {
 	}
 	
 	void loop() {
-		this.elapsedTime = System.currentTimeMillis() - startTime;
+		this.elapsedTime = time() - startTime;
 		++counter;
 		updateWorld();
 		speak();
@@ -287,10 +318,14 @@ public class RobotBrain {
 	 * @param pixelX
 	 * @return
 	 */
-	private double pixelToAngle(int pixelX) {
+	private static double pixelToAngle(int pixelX) {
 		int distFromCenter = RobotEye.IMAGE_WIDTH/2 - pixelX;
 		return Math.atan2(distFromCenter, RobotEye.IMAGE_DEPTH_IN_PIXELS);
 		
+	}
+	
+	private static long time() {
+		return System.currentTimeMillis();
 	}
 	
 	private void debug() {

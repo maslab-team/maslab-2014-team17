@@ -6,11 +6,12 @@ import robot.datautils.BoundedQueue;
 import robot.datautils.MotionData;
 import robot.datautils.SensorData;
 import robot.datautils.SensorDataHistory;
+
 import comm.MapleComm;
+
 import devices.actuators.Cytron;
 import devices.sensors.DigitalInput;
 import devices.sensors.Encoder;
-import devices.sensors.Infrared;
 
 /**
  * Contains methods necessary to control the robot and to
@@ -63,15 +64,21 @@ public class RobotController {
 	
 	/** PID Controller paramaters. */
 	private static final double P_ROT = 0.03;
-	private static final double I_ROT = 0.00002;
+	private static final double I_ROT = 0.00005;
 	private static final double D_ROT = 1.0;
-	private static final double P_TRANS = 0.03;
+	private static final double P_TRANS = 0.025;
 	private static final double I_TRANS = 0.00002;
 	private static final double D_TRANS = 0.5;
-	private static final double MAX_SPEED = 0.2;
+	private static final double MAX_SPEED = 0.3;
 	private static final double MAX_INTEGRAL_ERROR = 2500.0;
 	
 	private static final double BELT_SPEED = 0.37;
+
+	private static final long WALL_TIME_CONST_MILLIS = 1000;
+	private static final long STUCK_TIME_CONST_MILLIS = 100;
+
+	private static final double STUCK_THRESH_ANGULAR_DIST = 0.01;
+	private static final double STUCK_THRESH_WHEEL_CONTROL = 0.05;
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel, belt;
@@ -88,6 +95,13 @@ public class RobotController {
 	private double angleTarget;
 	private double distanceTarget;
 	
+	private double leftWheelControl;
+	private double rightWheelControl;
+	
+	/** Time at which we started being stuck. */
+	private long stuckTime;
+	
+	
 	/**
 	 * Current error, in radians and inches.
 	 */
@@ -99,8 +113,7 @@ public class RobotController {
 	private double angleCurrent;
 	// private double positionCurrent;
 	
-	private int leftSign;
-	private int rightSign;
+	private long leftWallTime, rightWallTime;
 	
 	RobotController(String port) {
 		this.leftWheel = new Cytron(LEFT_CYTRON_DIR_PIN, LEFT_CYTRON_PWM_PIN);
@@ -117,6 +130,9 @@ public class RobotController {
 		updateError();
 		this.errorHistory = new BoundedQueue<Error>();
 		this.errorHistory.add(this.error);
+		this.leftWallTime = this.rightWallTime = (long)0;
+		
+		this.stuckTime = 0;
 		
 		if(NO_COMM) {
 			this.comm = null;
@@ -178,7 +194,7 @@ public class RobotController {
 		this.angleTarget = toAngle(angle);
 		this.distanceTarget = distance;
 		updateError();
-		errorHistory.clear();
+		//errorHistory.clear();
 		this.errorHistory.add(this.error);
 	}
 	
@@ -197,33 +213,32 @@ public class RobotController {
 	}
 	
 	public boolean closeToWall() {
-	    //use SensorDataHistory?
 	    return (wallOnLeft() || wallOnRight());
 	}
 	
 	public boolean wallOnLeft() {
 		return !leftShortIR.getValue();
 	}
+	
 	public boolean wallOnRight() {
 		return !rightShortIR.getValue();
 	}
 	
-	/**
-	void setPositionTarget(Point target) {
-		
+	public boolean wallOnBothSides() {
+		return detectedLeftWallRecently() && detectedRightWallRecently();
 	}
 	
-	void setAngleTarget(int target) {
-		
+	public boolean detectedLeftWallRecently() {
+		return (time() - leftWallTime < WALL_TIME_CONST_MILLIS);
 	}
 	
-	void setVelocityTarget(Point target) {
-		
+	public boolean detectedRightWallRecently() {
+		return (time() - rightWallTime < WALL_TIME_CONST_MILLIS);
 	}
 	
-	void setAngularVelocityTarget(int target) {
-		
-	}*/
+	public boolean stuck() {
+		return stuckTime != 0 && (time() - stuckTime > STUCK_TIME_CONST_MILLIS);
+	}
 	
 	/**
 	 * Returns a useful summary of recent sensor data.  Adds the current
@@ -243,14 +258,36 @@ public class RobotController {
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = Math.abs(leftEncoder.getDeltaAngularDistance());
 		data.rightWheelDeltaAngularDistance = Math.abs(rightEncoder.getDeltaAngularDistance());
-		data.irInRange = closeToWall();
-		data.time = System.currentTimeMillis();
+		data.wallOnLeft = wallOnLeft();
+		data.wallOnRight = wallOnRight();
+		data.time = time();
 		
 		// Add data to history
 		sensorHistory.add(data);
 		
 		// Store new averages.
 		motionData = sensorHistory.getMotionData();
+		
+		// Store IR wall detection times.
+		if(data.wallOnLeft) {
+			leftWallTime = time();
+		} if(data.wallOnRight) {
+			rightWallTime = time();
+		}
+		
+		// Detect if we are stuck.
+		if((Math.abs(data.leftWheelDeltaAngularDistance) < STUCK_THRESH_ANGULAR_DIST
+				&& Math.abs(leftWheelControl) > STUCK_THRESH_WHEEL_CONTROL)
+			||  (Math.abs(data.rightWheelDeltaAngularDistance) < STUCK_THRESH_ANGULAR_DIST
+				&& Math.abs(rightWheelControl) > STUCK_THRESH_WHEEL_CONTROL)) {
+			if(0 == stuckTime) /* Getting stuck this iteration. */ {
+				System.err.println("\nGETTING STUCK\n");
+				stuckTime = time();
+			}
+			System.err.println("\nSTUCK\n");
+		} else /* Not stuck */ { 
+			stuckTime = 0;
+		}
 		
 		// Update error.
 		//double encoderAngularSpeed = (data.rightWheelAngularSpeed - data.leftWheelAngularSpeed)
@@ -345,8 +382,8 @@ public class RobotController {
 				+ D_TRANS * distanceErrorDerivative)
 				* 1.0 / (1.0 + 2 * Math.abs(angleError));
 
-		double leftWheelControl = translationalControl - rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
-		double rightWheelControl = translationalControl + rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
+		leftWheelControl = translationalControl - rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
+		rightWheelControl = translationalControl + rotationalControl * HALF_WHEEL_SEPARATION_IN_INCHES;
 		
 		// Cap control magnitude at MAX_SPEED.
 		leftWheelControl = (Math.abs(leftWheelControl) > MAX_SPEED) ? Math.signum(leftWheelControl)*MAX_SPEED : leftWheelControl;
@@ -397,6 +434,10 @@ public class RobotController {
 		}
 	}
 	
+	private static long time() {
+		return System.currentTimeMillis();
+	}
+	
 	private static class Error {
 		double angleError, distanceError;
 		long time;
@@ -404,7 +445,7 @@ public class RobotController {
 		Error(double angleError, double distanceError) {
 			this.angleError = angleError;
 			this.distanceError = distanceError;
-			this.time = System.currentTimeMillis();
+			this.time = time();
 		}
 		
 		public String toString() {

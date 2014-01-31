@@ -16,8 +16,7 @@ public class SensorData {
 	public double gyroAngle;
 	public double leftWheelDeltaAngularDistance;
 	public double rightWheelDeltaAngularDistance;
-	public double irDistance;
-	public boolean irInRange;
+	public boolean wallOnLeft, wallOnRight;
 	
 	public long time;
 	
@@ -26,13 +25,13 @@ public class SensorData {
 		rightWheelAngularSpeed = 0;
 		gyroAngularSpeed = 0;
 		gyroAngle = 0;
-		irInRange = false;
+		wallOnLeft = wallOnRight = false;
 		time = 0;
 	}
 	
 	SensorData(double leftWheelAngularSpeed, double rightWheelAngularSpeed,
 			double leftWheelDeltaAngularDistance, double rightWheelDeltaAngularDistance,
-			double gyroAngularSpeed, double gyroAngle, double irDistance, boolean irInRange, long time) {
+			double gyroAngularSpeed, double gyroAngle, boolean wallOnLeft, boolean wallOnRight, long time) {
 		this.leftWheelAngularSpeed = leftWheelAngularSpeed;
 		this.rightWheelAngularSpeed = rightWheelAngularSpeed;
 		this.gyroAngularSpeed = gyroAngularSpeed;
@@ -40,15 +39,15 @@ public class SensorData {
 		this.time = time;
 		this.leftWheelDeltaAngularDistance = leftWheelDeltaAngularDistance;
 		this.rightWheelDeltaAngularDistance = rightWheelDeltaAngularDistance;
-		this.irDistance = irDistance;
-		this.irInRange = irInRange;
+		this.wallOnRight = wallOnRight;
+		this.wallOnLeft = wallOnLeft;
 	}
 	
 	/**
 	 * Create a new instance of SensorData with values equivalent
 	 * to the original.  (Clones the original.)
 	 * 
-	 * @param original The instane of SensorData to clone.
+	 * @param original The instance of SensorData to clone.
 	 */
 	SensorData(SensorData original) {
 		this.leftWheelAngularSpeed = original.leftWheelAngularSpeed;
@@ -58,8 +57,7 @@ public class SensorData {
 		this.time = original.time;
 		this.leftWheelDeltaAngularDistance = original.leftWheelDeltaAngularDistance;
 		this.rightWheelDeltaAngularDistance = original.rightWheelDeltaAngularDistance;
-		this.irDistance = original.irDistance;
-		this.irInRange = original.irInRange;
-	}
+		this.wallOnRight = original.wallOnRight;
+		this.wallOnLeft = original.wallOnLeft;	}
 	
 }
