@@ -199,18 +199,21 @@ public class RobotBrain {
 	}
 	
 	private void pingPong() {
-		/* Run every 5 seconds. */
-		if(elapsedTime - timeMarker > 5000) {
+		/* Run every 1 seconds. */
+		if(elapsedTime - timeMarker > 300) {
 			/* Ping pong strategy */
 			if(!controller.closeToWall()) {
 				angleTarget = 0.0;
-				distanceTarget = 5.0;
+				distanceTarget = 8.0;
+			} else if(controller.wallOnLeft() && controller.wallOnRight()) {
+				angleTarget = -1.0 * Math.PI/2.0;
+				distanceTarget = -10.0;
 			} else if (controller.wallOnLeft()){
 				angleTarget = -1.0 * Math.PI/2.0;
-				distanceTarget = 0.0;
+				distanceTarget = -2.0;
 			} else if (controller.wallOnRight()){
 				angleTarget = 1.0 * Math.PI/2.0;
-				distanceTarget = 0.0;
+				distanceTarget = 02.0;
 			}
 			controller.setRelativeTarget(angleTarget, distanceTarget);
 			timeMarker = elapsedTime;

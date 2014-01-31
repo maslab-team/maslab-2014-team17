@@ -35,7 +35,7 @@ public class RobotController {
 	/** Set true to disable communication with the Maple. */
 	private static final boolean NO_COMM = false;
 	
-	private static final boolean DEBUG = false;
+	private static final boolean DEBUG = true;
 	
 	/** Wheel constants. */
 	private static final double WHEEL_SEPARATION_IN_INCHES = 12.0;
@@ -62,14 +62,16 @@ public class RobotController {
 	private static final int RIGHT_SHORT_IR_PIN = 13;
 	
 	/** PID Controller paramaters. */
-	private static final double P_ROT = 0.1;
-	private static final double I_ROT = 0.00007;
-	private static final double D_ROT = 0.0;
-	private static final double P_TRANS = 0.1;
-	private static final double I_TRANS = 0.00;
-	private static final double D_TRANS = 0.0;
-	private static final double MAX_SPEED = 0.20;
-	private static final double MAX_INTEGRAL_ERROR = 1000.0;
+	private static final double P_ROT = 0.03;
+	private static final double I_ROT = 0.00002;
+	private static final double D_ROT = 1.0;
+	private static final double P_TRANS = 0.03;
+	private static final double I_TRANS = 0.00002;
+	private static final double D_TRANS = 0.5;
+	private static final double MAX_SPEED = 0.2;
+	private static final double MAX_INTEGRAL_ERROR = 2500.0;
+	
+	private static final double BELT_SPEED = 0.37;
 	
 	private MapleComm comm;
 	private Cytron leftWheel, rightWheel, belt;
@@ -113,7 +115,7 @@ public class RobotController {
 		this.distanceTarget = 0;
 		this.angleCurrent = 0;
 		updateError();
-		this.errorHistory = new BoundedQueue<Error>(30);
+		this.errorHistory = new BoundedQueue<Error>();
 		this.errorHistory.add(this.error);
 		
 		if(NO_COMM) {
@@ -241,7 +243,6 @@ public class RobotController {
 		data.rightWheelAngularSpeed = rightEncoder.getAngularSpeed();
 		data.leftWheelDeltaAngularDistance = Math.abs(leftEncoder.getDeltaAngularDistance());
 		data.rightWheelDeltaAngularDistance = Math.abs(rightEncoder.getDeltaAngularDistance());
-		//data.irDistance = longIR.getDistance();
 		data.irInRange = closeToWall();
 		data.time = System.currentTimeMillis();
 		
@@ -262,12 +263,9 @@ public class RobotController {
 		// Distance target is relative.
 		distanceTarget = distanceTarget - distanceTraveled;
 		
-	    System.out.println("left: " + data.leftWheelDeltaAngularDistance + ", right: " + data.rightWheelDeltaAngularDistance);
-	    System.out.println("angleCurrent: " + angleCurrent);
-		System.out.println("distanceTarget: " + distanceTarget);
-	    System.out.println("closeToWall: " + data.irInRange);
-		
-		updateError();
+	    System.out.println("Left wheel traveled:\t" + data.leftWheelDeltaAngularDistance + "\nRight wheel traveled:\t" + data.rightWheelDeltaAngularDistance);
+
+	    updateError();
 		errorHistory.add(error);
 		
 		debug();
@@ -356,17 +354,7 @@ public class RobotController {
 
 		leftWheel.setSpeed(leftWheelControl);
 		rightWheel.setSpeed(rightWheelControl);
-		/*
-		if(leftWheelControl >= 0) {
-		    leftSign = 1;
-		} else {
-		    leftSign = -1;
-		}
-		if(rightWheelControl >= 0) {
-		    rightSign = 1;
-		} else {
-		    rightSign = -1;
-		}*/
+		belt.setSpeed(BELT_SPEED);
 
 		if(DEBUG) {
 			System.out.printf("Rotational control:\n");
@@ -404,6 +392,8 @@ public class RobotController {
 			System.out.printf("\tangleTarget:\t%.5f\n", angleTarget);
 			System.out.printf("\tdistanceError:\t%.5f\n", error.distanceError);
 			System.out.printf("\tdistanceTarget:\t%.5f\n", distanceTarget);
+			System.out.println("\twallOnLeft:\t" + wallOnLeft());
+			System.out.println("\twallOnRight:\t" + wallOnRight());
 		}
 	}
 	
