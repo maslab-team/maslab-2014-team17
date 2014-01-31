@@ -122,6 +122,17 @@ public class RobotWorld {
 		return ret;
 	}
 	
+	public Ball getLargestBall() {
+		Ball largestRedBall = getLargestRedBall();
+		Ball largestGreenBall = getLargestGreenBall();
+		if(largestRedBall == null) return largestGreenBall;
+		else if(largestGreenBall == null) return largestRedBall;
+		else if(largestRedBall.compareTo(largestGreenBall) > 0) {
+			return largestRedBall;
+		}
+		return largestGreenBall;
+	}
+	
 	public Ball getLargestRedBall() {
 		if(!redBalls.isEmpty()) return redBalls.get(0);		
 		return null;
@@ -184,7 +195,8 @@ public class RobotWorld {
 		public int compareTo(Object other) {
 			if (other == null) return -1;
 			if (!(other instanceof Ball)) return -1;
-			return this.getRadius() - ((Ball)other).getRadius() > 0 ? 1 : -1;
+			//return this.getRadius() - ((Ball)other).getRadius() > 0 ? -1 : 1;
+			return (this.getY() - ((Ball)other).getY() > 0) ? -1 : 1;
 		}
 	}
 
