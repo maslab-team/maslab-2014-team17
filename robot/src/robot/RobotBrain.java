@@ -204,10 +204,11 @@ public class RobotBrain {
 	}
 	
 	private void goToBalls() {
-		RobotWorld.Ball ball = world.getLargestBall();
+		RobotWorld.Ball ball = world.getLargestRedBall();//findme
 		if(ball != null) {
 			strategy = "I found a " + ball.getColor() + "  ball! I'm going to go eat it.";
 			angleTarget = pixelToAngle(ball.getX());
+			System.out.printf("Ball at " + ball.getX() + ". Angle: %.2f\n", angleTarget);
 			timeMarker = elapsedTime;
 			controller.setRelativeTarget(angleTarget, distanceTarget);
 		} else {
@@ -222,7 +223,6 @@ public class RobotBrain {
 		if(elapsedTime - timeMarker > PING_PONG_DELAY_MILLIS
 				&& elapsedTime - stuckTimeMarker > STUCK_DELAY_MILLIS) {
 			if(controller.stuck()) {
-				System.err.println("\nI KNOW I'M STUCK\n");
 				stuckTimeMarker = elapsedTime;
 				if(angleTarget > 0.0) {
 					angleTarget = -0.5 * Math.PI/2.0;
@@ -232,7 +232,6 @@ public class RobotBrain {
 				distanceTarget = -5.0;
 
 			} else if(controller.wallOnBothSides()) {
-				angleTarget = 0;
 				angleTarget = -0.1 * Math.PI/2.0;
 				distanceTarget = -5.0;
 				stuckTimeMarker = elapsedTime;
@@ -284,6 +283,12 @@ public class RobotBrain {
 		updateWorld();
 		speak();
 		MotionData mData = controller.getMotionData();
+		if((USE_BOTCLIENT && !client.gameStarted()) || elapsedTime > (1000 * 60 * 3) + 1000) {
+			System.out.println("Game over!");
+			strategy = "Game over.";
+			speak();
+			stopLooking();
+		}
 
 		pingPong();
 		/*

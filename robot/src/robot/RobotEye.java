@@ -90,7 +90,7 @@ public class RobotEye {
 	/** Image source constants. */
 	static final int IMAGE_HEIGHT = 1080; // 1080 for webcam, 720 for macbook
 	static final int IMAGE_WIDTH = 1920; // 1920 for webcam, 1280 for macbook
-	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 120.0 * Math.PI / 180.0;
+	static final double IMAGE_HORIZONTAL_ANGLE_OF_VIEW = 80.0 * Math.PI / 180.0;
 	static final double IMAGE_DEPTH_IN_PIXELS =
 			IMAGE_WIDTH/(2.0*Math.tan(IMAGE_HORIZONTAL_ANGLE_OF_VIEW/2.0));
 	
@@ -436,7 +436,7 @@ public class RobotEye {
 		}
 	}
 	
-	public static void main(String[] args) {
+/*	public static void main(String[] args) {
 	    
 	    RobotEye eye = new RobotEye(0);
 	    Mat im = eye.look();
@@ -481,7 +481,7 @@ public class RobotEye {
 	    eye.view(tmpImage);
 	    eye.view(blurredGrayImage);
 	    eye.view(processedImage);
-	    */
-	}
+	    
+	}*/
 
 }

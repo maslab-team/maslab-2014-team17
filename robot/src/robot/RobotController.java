@@ -34,7 +34,7 @@ import devices.sensors.Encoder;
 public class RobotController {
 	
 	/** Set true to disable communication with the Maple. */
-	private static final boolean NO_COMM = true;
+	private static final boolean NO_COMM = false;
 	
 	private static final boolean DEBUG = true;
 	
@@ -69,7 +69,7 @@ public class RobotController {
 	private static final double P_TRANS = 0.025;
 	private static final double I_TRANS = 0.00002;
 	private static final double D_TRANS = 0.5;
-	private static final double MAX_SPEED = 0.3;
+	private static final double MAX_SPEED = 0.2;
 	private static final double MAX_INTEGRAL_ERROR = 2500.0;
 	
 	private static final double BELT_SPEED = 0.37;
